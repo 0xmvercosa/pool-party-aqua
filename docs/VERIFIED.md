@@ -29,6 +29,24 @@ Each router's `AQUA()` getter points at its own registry (pairs are fixed).
 6. Aqua mode enforces `receiver == maker` (the vault receives directly) and forbids WETH unwrap.
 7. Chainlink ETH/USD on Arbitrum: `0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612` (8 decimals). Measured over 24h: 360 updates, median gap 121s, max 29.5 min. The 90-min staleness bound (D9) has zero false-trip margin risk.
 
+## Fill in during POO-1058 / POO-1062
+
+- [ ] Rehearsal tx hashes (fork): approve, ship, quote, swap, dock
+- [ ] Builder round-trip vs live ship #0: PASS/FAIL
+- [ ] `protocolFeeAmountOutXD` (fee charged on tokenOut = USDC) present in the deployed array and SDK? If yes, on-chain protocol fee returns in v1 charged in USDC
+- [ ] Are the 4 gen-2 makers EOAs? (supports the "first pooled-custody Aqua maker" demo claim)
+- [ ] Mainnet: adapter address, vault address, ship txs, strategyHashes (production band + demo band)
+
+## Reproduction commands
+
+```bash
+export ETH_RPC_URL=https://arb1.arbitrum.io/rpc
+cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "AQUA()(address)"      # gen-2 pair
+cast call 0x8fdd04dbf6111437b44bbca99c28882434e0958f "AQUA()(address)"      # gen-1 pair
+cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "eip712Domain()"       # "1inch SwapVM v1.0" / "1.0.2"
+cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "WETH()(address)"      # reverts: deployed build predates main/v1.0.1 WETH()
+```
+
 ## Upstream call shapes, read from pinned source (Track A, POO-1059/POO-1060)
 
 Upstream is public and fetchable without auth, so nothing below is guesswork and nothing is
@@ -64,21 +82,3 @@ Measured on an Arbitrum fork of live state (POO-1060 suite):
   when the hot buffer covers it). Cents at Arbitrum gas prices, far below the 80 bps premium on any
   fill worth doing.
 - aUSDC carry over 90 warped days on 100k USDC: **263 bps implied APR**.
-
-## Fill in during POO-1058 / POO-1062
-
-- [ ] Rehearsal tx hashes (fork): approve, ship, quote, swap, dock
-- [ ] Builder round-trip vs live ship #0: PASS/FAIL
-- [ ] `protocolFeeAmountOutXD` (fee charged on tokenOut = USDC) present in the deployed array and SDK? If yes, on-chain protocol fee returns in v1 charged in USDC
-- [ ] Are the 4 gen-2 makers EOAs? (supports the "first pooled-custody Aqua maker" demo claim)
-- [ ] Mainnet: adapter address, vault address, ship txs, strategyHashes (production band + demo band)
-
-## Reproduction commands
-
-```bash
-export ETH_RPC_URL=https://arb1.arbitrum.io/rpc
-cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "AQUA()(address)"      # gen-2 pair
-cast call 0x8fdd04dbf6111437b44bbca99c28882434e0958f "AQUA()(address)"      # gen-1 pair
-cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "eip712Domain()"       # "1inch SwapVM v1.0" / "1.0.2"
-cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "WETH()(address)"      # reverts: deployed build predates main/v1.0.1 WETH()
-```
