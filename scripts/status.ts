@@ -332,6 +332,9 @@ async function main(): Promise<void> {
         fromBlock: from,
         toBlock: t,
       });
+      // Withdrawals reach the vault straight from the aToken contract (Aave transfers from
+      // the reserve, not from the adapter), for both manual unparks and JIT unparks, so the
+      // outflow leg must watch BOTH senders or JIT volume masquerades as negative carry.
       const outLogs = await client.getLogs({
         address: TOKENS.USDC,
         event: { type: "event", name: "Transfer", inputs: [
@@ -339,7 +342,7 @@ async function main(): Promise<void> {
           { name: "to", type: "address", indexed: true },
           { name: "value", type: "uint256", indexed: false },
         ] },
-        args: { from: adapterAddr, to: vault },
+        args: { from: [adapterAddr, AAVE_A_USDC], to: vault },
         fromBlock: from,
         toBlock: t,
       });
