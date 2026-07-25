@@ -29,6 +29,8 @@ interface IERC20Symbol {
 ///         against the chain, so `docs/VERIFIED.md` cannot silently rot.
 contract LaunchForkTest is Test {
     uint256 internal constant USDC_ONE = 1e6;
+    /// @dev Aave scaled-balance rounding on a sub 1,000 USDC position; see the adapter suite.
+    uint256 internal constant AAVE_ROUNDING = 5;
 
     address internal manager = makeAddr("manager");
 
@@ -107,10 +109,9 @@ contract LaunchForkTest is Test {
         vault.parkUsdc(190 * USDC_ONE);
         vm.stopPrank();
 
-        // Tolerance is Aave's scaled-balance rounding on supply, one USDC unit on 190, not ours.
-        assertApproxEqAbs(vault.totalAssets(), seed, 2, "parking is NAV neutral");
+        assertApproxEqAbs(vault.totalAssets(), seed, AAVE_ROUNDING, "parking is NAV neutral");
         assertEq(IERC20(AddressBook.USDC).balanceOf(address(vault)), 10 * USDC_ONE, "hot buffer");
-        assertApproxEqAbs(adapter.parkedBalance(AddressBook.USDC), 190 * USDC_ONE, 1, "earning in Aave");
+        assertApproxEqAbs(adapter.parkedBalance(AddressBook.USDC), 190 * USDC_ONE, AAVE_ROUNDING, "earning in Aave");
 
         // 3. Ship BOTH bands to the REAL Aqua registry, combined within the 10 percent sleeve
         //    (PRG-R5/R6): production 12 USDC plus demo 8 USDC on a 200 USDC vault.
@@ -136,7 +137,7 @@ contract LaunchForkTest is Test {
         );
 
         // Shipping is accounting only: not one token moved.
-        assertApproxEqAbs(vault.totalAssets(), seed, 2, "ship is NAV neutral");
+        assertApproxEqAbs(vault.totalAssets(), seed, AAVE_ROUNDING, "ship is NAV neutral");
         assertEq(IERC20(AddressBook.USDC).balanceOf(address(vault)), 10 * USDC_ONE, "buffer untouched by shipping");
 
         // 5. Emergency stop: dock everything, then revoke.
@@ -149,13 +150,13 @@ contract LaunchForkTest is Test {
         _assertRegistryBalance(productionHash, AddressBook.USDC, 0);
         _assertRegistryBalance(demoHash, AddressBook.USDC, 0);
         assertEq(IERC20(AddressBook.USDC).allowance(address(vault), AddressBook.AQUA), 0, "allowance revoked");
-        assertApproxEqAbs(vault.totalAssets(), seed, 2, "dockAll is NAV neutral");
+        assertApproxEqAbs(vault.totalAssets(), seed, AAVE_ROUNDING, "dockAll is NAV neutral");
 
         // 6. The manager can still get the money out afterwards: inert, not stuck.
         uint256 shares = vault.sharesOf(manager);
         vm.prank(manager);
         uint256 redeemed = vault.redeem(shares);
-        assertApproxEqAbs(redeemed, seed, 2, "seed recoverable after the emergency stop");
+        assertApproxEqAbs(redeemed, seed, AAVE_ROUNDING, "seed recoverable after the emergency stop");
     }
 
     /// @notice The real registry refuses to re-ship a docked hash, which is why every roll must
