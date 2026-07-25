@@ -6,6 +6,7 @@ import { console } from "forge-std/console.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { VerifyDeployment } from "../script/Ops.s.sol";
 import { AaveV3Adapter } from "../src/AaveV3Adapter.sol";
 import { AddressBook } from "../src/AddressBook.sol";
 import { PartyVault } from "../src/PartyVault.sol";
@@ -229,5 +230,53 @@ contract LaunchForkTest is Test {
     function _assertRegistryBalance(bytes32 hash, address token, uint256 expected) private view {
         (uint248 balance,) = IAqua(AddressBook.AQUA).rawBalances(address(vault), vault.ROUTER(), hash, token);
         assertEq(uint256(balance), expected, "registry virtual balance");
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // The post-deploy on-chain gate (POO-1062 R1)
+    // -------------------------------------------------------------------------------------------
+
+    /// @notice `VerifyDeployment` must pass against a correctly wired, freshly deployed pair.
+    /// @dev The checks take explicit arguments rather than reading the environment, so they are
+    ///      callable straight from a test. That is deliberate: a launch gate that can only be
+    ///      exercised by setting environment variables is a gate nobody tests.
+    function test_verifyDeployment_passesOnAFreshlyDeployedPair() public {
+        _verifier().check(address(vault), manager);
+    }
+
+    /// @notice The gate must catch the mistake it exists to catch: a vault whose owner is not the
+    ///         manager we believe signed the deployment.
+    function test_verifyDeployment_rejectsAWrongManager() public {
+        _expectCheckToFailWith(address(vault), makeAddr("not-the-manager"), "Verify: owner is not the manager");
+    }
+
+    /// @notice It is a FRESH-deployment gate. After the seed it must fail, so it can never be
+    ///         mistaken for an ongoing health check; that is what `Smoke` is for.
+    function test_verifyDeployment_rejectsAnAlreadySeededVault() public {
+        _seedAndPark();
+        _expectCheckToFailWith(
+            address(vault), manager, "Verify: vault is already seeded, this is not a fresh deployment"
+        );
+    }
+
+    /// @notice And it must reject an address with no code, which is what a mis-pasted address looks
+    ///         like from the script's point of view.
+    function test_verifyDeployment_rejectsAnAddressWithNoCode() public {
+        _expectCheckToFailWith(makeAddr("nothing-here"), manager, "Verify: vault has no code");
+    }
+
+    function _verifier() private returns (VerifyDeployment) {
+        return new VerifyDeployment();
+    }
+
+    /// @dev try/catch rather than `expectRevert`, so the assertion pins the exact reason string
+    ///      instead of merely "something reverted".
+    function _expectCheckToFailWith(address vaultAddress, address expectedManager, string memory reason) private {
+        VerifyDeployment verifier = _verifier();
+        try verifier.check(vaultAddress, expectedManager) {
+            revert("verification passed but should have failed");
+        } catch Error(string memory actual) {
+            assertEq(actual, reason, "wrong rejection reason");
+        }
     }
 }
