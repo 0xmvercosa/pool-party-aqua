@@ -17,7 +17,8 @@
     "gate": "pnpm typecheck && pnpm test",
     "rehearse:traps": "tsx scripts/rehearse-traps.ts",
     "rehearse:all": "pnpm rehearse && pnpm rehearse:traps",
-    "fixtures:build": "cd scripts/fixtures && forge build"
+    "fixtures:build": "cd scripts/fixtures && forge build",
+    "rehearse:taker": "tsx scripts/rehearse-taker.ts"
   },
   "dependencies": {
     "@1inch/aqua-sdk": "0.2.0",
