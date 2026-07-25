@@ -17,7 +17,14 @@
     "gate": "pnpm typecheck && pnpm test",
     "rehearse:traps": "tsx scripts/rehearse-traps.ts",
     "rehearse:all": "pnpm rehearse && pnpm rehearse:traps",
-    "fixtures:build": "cd scripts/fixtures && forge build"
+    "fixtures:build": "cd scripts/fixtures && forge build",
+    "rehearse:taker": "tsx scripts/rehearse-taker.ts",
+    "fork:rehearse": "scripts/with-fork.sh pnpm rehearse",
+    "fork:traps": "scripts/with-fork.sh pnpm rehearse:traps",
+    "fork:taker": "scripts/with-fork.sh pnpm rehearse:taker",
+    "fork:all": "scripts/with-fork.sh sh -c \"pnpm rehearse && pnpm rehearse:traps && pnpm rehearse:taker\"",
+    "taker": "tsx scripts/taker.ts",
+    "status": "tsx scripts/status.ts"
   },
   "dependencies": {
     "@1inch/aqua-sdk": "0.2.0",
