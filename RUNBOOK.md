@@ -24,8 +24,9 @@ silently.
 forge test --root contracts
 ```
 
-51 tests must be green, including the fork suites, which run against live Arbitrum state through the
-public endpoint by default (`ARBITRUM_RPC_URL` overrides it).
+The whole suite must be green, fork suites included. Those run against live Arbitrum state through
+the public endpoint by default (`ARBITRUM_RPC_URL` overrides it). 62 tests at the time of writing:
+38 vault unit, 6 differential against OpenZeppelin ERC-4626, 13 adapter fork, 5 launch fork.
 
 `LaunchForkTest.test_launchSequence_seedParkShipTwoBandsThenDockAll` is a full rehearsal of section
 1 to 4 below against the **real** Aqua registry. Run it immediately before the live deploy: if it
