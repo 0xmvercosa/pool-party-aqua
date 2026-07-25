@@ -13,6 +13,7 @@
  *   pnpm taker --strategy 0x... --size 0.01 --network mainnet
  *   pnpm taker --strategy 0x... --size 0.5  --network fork      (forces the JIT path)
  */
+import { relative } from "node:path";
 import { Address, Order, SwapVMContract, TakerTraits } from "@1inch/swap-vm-sdk";
 import {
   http,
@@ -29,7 +30,7 @@ import { AQUA_SWAP_VM_ROUTER, DECIMALS, TOKENS } from "./lib/addresses.ts";
 import { anvilArbitrumFork } from "./lib/clients.ts";
 import { arbitrumRpcUrl, forkRpcUrl } from "./lib/env.ts";
 import { TOPICS, parsePulled, parsePushed, parseSwapped, topicOf } from "./lib/events.ts";
-import { appendFill, appendStrategyNote } from "./lib/fills.ts";
+import { appendFill, appendStrategyNote, fillsPathFor } from "./lib/fills.ts";
 import { formatUnits, heading, info } from "./lib/format.ts";
 import { reconstructFromChain } from "./lib/reconstruct.ts";
 
@@ -245,7 +246,7 @@ async function main(): Promise<void> {
       txHash: swapTx,
       network,
     });
-    info(`recorded as fill #${index} in docs/FILLS.md`);
+    info(`recorded as fill #${index} in ${relative(process.cwd(), fillsPathFor(network))}`);
   }
 
   if (receipt.status !== "success") process.exitCode = 1;

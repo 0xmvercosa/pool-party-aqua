@@ -26,6 +26,6 @@ the Aave carry, which accrues every block whether anyone fills or not.
 | # | When (UTC) | Band | Size in | Size out | Implied px | JIT | Tx |
 |---|---|---|---|---|---|---|---|
 
-<!-- strategy: demo 0xf951f611efd46c08df1a5f619e5ee1b8c28d9c57f8d95a18c59bec709228a4e6 on fork -->
-| 1 | 2026-07-25 16:43:40 | demo | 0.01 WETH | 18.497409 USDC | $1849.74 | no | 0xfadcecb1... (fork) |
-| 2 | 2026-07-25 16:43:58 | demo | 0.5 WETH | 924.433668 USDC | $1848.87 | yes | 0x6cac72af... (fork) |
+<!-- strategy: demo 0x98c6a2483ada1fa9f9c9baa26613d9ac003563faf44330ad2cb99bd0ff1fa280 on fork -->
+| 1 | 2026-07-25 16:54:48 | demo | 0.01 WETH | 18.488194 USDC | $1848.82 | no | 0x9855961b... (fork) |
+| 2 | 2026-07-25 16:54:50 | demo | 0.5 WETH | 923.973349 USDC | $1847.95 | yes | 0xbc8058a0... (fork) |

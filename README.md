@@ -73,3 +73,23 @@ Per the hackathon continuity rule: everything in THIS repository was created dur
 ## Licensing and security
 
 1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). No upstream source is vendored into this repository: our contracts restate only the ABI shapes they call, and each such file cites the upstream tag it was transcribed from (`aqua` v1.0.0, `swap-vm` v1.0.1). Should PartyRouter ship after the window, its source is published under the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution required by the upstream license: "© 2025 Degensoft Ltd" (Aqua, SwapVM). No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
+
+## Running the rehearsals
+
+Every rehearsal needs an Arbitrum fork. Use the `fork:` scripts, which start a **fresh** one
+and tear it down afterwards:
+
+```bash
+pnpm fork:all        # full loop + traps + taker, on one throwaway fork
+pnpm fork:rehearse   # approve -> ship -> quote -> swap -> dock
+pnpm fork:traps      # the seven guardrails, each demonstrated on-chain
+pnpm fork:taker      # reconstruct from chain -> quote -> fill -> JIT fill
+pnpm verify:onchain  # read-only against Arbitrum mainnet, no fork, no tx
+```
+
+Do not leave a fork running between sessions. Anvil pins the fork block at startup and
+fetches state lazily; public Arbitrum RPCs are not archive nodes, so once that block ages out
+of retention the fork starts failing with `-32000: metadata is not found` on any account it
+has not already cached. A long-lived fork is a fork that is about to break in a way that
+looks like a bug in our code. The bare `pnpm rehearse` / `rehearse:traps` / `rehearse:taker`
+scripts assume you have already started one yourself.
