@@ -96,7 +96,7 @@ flowchart LR
 
 ## Definition of done (hackathon)
 
-- Party Notes 90/10 live on Arbitrum mainnet under caps, with >= 3 real fills logged (at least one exercising the JIT Aave path).
+- Active Reserve live on Arbitrum mainnet under caps, with >= 3 real fills logged (at least one exercising the JIT Aave path).
 - PartyRouter deployed + live strategy migrated (or consciously de-scoped with the sentinel documented as the price protection).
 - Demo runbook reproducible cold by a teammate; submission checklist ticked; commit history phased.
 - Every open decision D1-D10 resolved and recorded in `01_BUSINESS_RULES.md`.

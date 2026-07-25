@@ -1,7 +1,7 @@
 # Aqua Strategies: Business Rules (v1)
 
 **Date:** 2026-07-25
-**Status:** v1 (SRV section at v3). Decisions D1-D7, D9, D10 are RESOLVED (2026-07-25); only D8 (product name) remains open. History on the epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057). Any rule change after confirmation increments the version here, on the issue labels (`rules:vN`), and in file headers, per the project's rule-versioning discipline.
+**Status:** v1 (SRV section at v3). Decisions D1-D7, D9, D10 are RESOLVED (2026-07-25); all decisions D1-D10 RESOLVED. History on the epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057). Any rule change after confirmation increments the version here, on the issue labels (`rules:vN`), and in file headers, per the project's rule-versioning discipline.
 **Scope:** single source of truth for all numbered rules of the Aqua hackathon build. Each Linear issue embeds its own subset verbatim; on divergence, THIS FILE wins and the issue must be re-synced. Canonical home: `docs/` of this dedicated hackathon repo.
 
 Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + database), PRG (program compiler), KPR (keepers), BOT (taker bot), IDX (indexer/NAV), RTR (PartyRouter), FE (frontend). Cross-references use `VLT-R4` style.
@@ -91,6 +91,10 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 - **RTR-R6** Compiler emits the oracle instruction only when targeting PartyRouter.
 - **RTR-R7** Demo evidence: one rejected under-priced fill captured.
 
+## FE: Frontend, product copy
+
+- **FE-R10** Official product name: **Active Reserve** (D8 RESOLVED). Official description (<=280 chars, EN, use verbatim in catalog/detail/submission): "An always-earning reserve that buys the dip. Capital earns Aave lending yield every block and is deployed automatically the instant the market dips into the manager's buy band, purchasing ETH below market price. Objective: accumulate ETH at a discount while never sitting idle."
+
 ## FE: Frontend ([POO-1064](https://linear.app/yeildbay/issue/POO-1064), [POO-1067](https://linear.app/yeildbay/issue/POO-1067), [POO-1068](https://linear.app/yeildbay/issue/POO-1068))
 
 - **FE-R1** `protocol: "uniswap-v3" | "aqua"` optional discriminator; absent = uniswap-v3; zero behavior change for existing rows.
@@ -117,5 +121,5 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 | D5 | Mandate defaults | band spot-15%..-5%; epoch 7d; drift 10%; buffer 5%; coverage 1.0 | first ship |
 | D6 | FE inside hackathon window | Yes, parallel, flag off | POO-1064/1067/1068 start |
 | D7 | Hackathon final demo date | UNKNOWN, needed for scheduling | POO-1070 |
-| D8 | Product name | "Party Notes 90/10" working name | copy in POO-1067 |
+| D8 | RESOLVED (Murilo 2026-07-25): product name **Active Reserve** (formerly working name Party Notes 90/10). Official 280-char description in section FE below | n/a | copy in POO-1067 |
 | D9 | Oracle params | maxPriceDecay 50 bps; maxStaleness 90 min | POO-1063 deploy, VLT-R4, KPR-R4 |

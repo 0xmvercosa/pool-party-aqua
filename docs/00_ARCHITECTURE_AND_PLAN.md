@@ -18,7 +18,7 @@
 
 We are adding a **new class of managed strategies** to Pool Party, powered by 1inch Aqua and SwapVM, alongside (not replacing) the existing Uniswap v3 class. Existing Pool Party smart contracts are not modified.
 
-The first product of the class is **Party Notes 90/10**: an Aave-cushioned "buy the dip" note. Roughly 90% of vault capital earns Aave v3 supply yield at all times; the remainder quotes an aggressive buy band below spot through a SwapVM program. The differentiator: even the parked capital is quotable liquidity, because a maker hook withdraws from Aave **inside the same transaction** as a fill. Capital earns interest until the exact second it buys the dip. This payoff is impossible to construct on Uniswap v3, where pooled liquidity earns nothing while it waits.
+The first product of the class is **Active Reserve**: an Aave-cushioned "buy the dip" note. Roughly 90% of vault capital earns Aave v3 supply yield at all times; the remainder quotes an aggressive buy band below spot through a SwapVM program. The differentiator: even the parked capital is quotable liquidity, because a maker hook withdraws from Aave **inside the same transaction** as a fill. Capital earns interest until the exact second it buys the dip. This payoff is impossible to construct on Uniswap v3, where pooled liquidity earns nothing while it waits.
 
 Why Aqua fits Pool Party structurally:
 
@@ -92,7 +92,7 @@ SwapVM is an on-chain interpreter. A **program** is a byte string (`[opcode:1B][
 
 ---
 
-## 3. Product: Party Notes 90/10, first of a class
+## 3. Product: Active Reserve, first of a class
 
 **Investor pitch (jargon-free, per our UX philosophy):** "Your dollars earn interest until the exact second they buy the dip." Deposits earn Aave yield continuously. When the market dips into the manager's band, the note automatically buys at the manager's prices plus a fat fee ("dip premium"). Upside: Aave carry + premium + discounted entries. Honest framing: **cushioned, never "protected"**.
 
@@ -330,7 +330,7 @@ Every phase ends with something real on Arbitrum mainnet, demoable and valuable 
 
 | Requirement | How we satisfy it |
 |---|---|
-| Custom Aqua app implementing a sophisticated DeFi position | PartyVault as pooled maker + Party Notes 90/10 program (lending + market-making composition, JIT settlement) |
+| Custom Aqua app implementing a sophisticated DeFi position | PartyVault as pooled maker + Active Reserve program (lending + market-making composition, JIT settlement) |
 | SwapVM usage (scores higher) | The strategy IS a SwapVM program in Aqua mode; plus PartyRouter = modified SwapVM with a newly wired instruction |
 | Official Aqua/SwapVM contracts used | Official Aqua registry + official AquaSwapVMRouter in phases 1-2; PartyRouter is the explicitly-allowed modified redeploy |
 | On-chain execution of token transfers in the demo | Real fills on Arbitrum mainnet (phase 2 trace: aUSDC burn + Pulled + push in one tx). Stronger than the local-fork minimum |
@@ -359,7 +359,7 @@ Every phase ends with something real on Arbitrum mainnet, demoable and valuable 
 
 1. Linear epic + numbered business rules (`[R1]...`, versioned) before implementation starts, per workflow. Sub-issues per phase.
 2. Manager for the guarded launch = us (own capital). Confirm initial `maxTvl` and cap schedule.
-3. Naming: "Party Notes 90/10" is a working name; final product name pending.
+3. Naming: "Active Reserve" is a working name; final product name pending.
 4. Whether phase 4 external launch happens inside the hackathon window or right after (flag stays off until decided).
 5. Chain expansion (Base, Polygon) after Arbitrum proves out; both have official deployments listed.
 

@@ -1,6 +1,8 @@
 # Pool Party x 1inch Aqua (Hackathon): on-chain side
 
-A new class of Pool Party managed strategy built on 1inch Aqua + SwapVM, live on Arbitrum. The first product (working name "Party Notes 90/10"): ~90% of vault capital earns Aave v3 yield at all times; ~10% quotes a buy-the-dip band below spot as a SwapVM program in Aqua mode. A maker hook withdraws from Aave inside the settlement transaction, so parked capital is quotable liquidity: capital earns interest until the exact second it buys the dip.
+Active Reserve: a new class of Pool Party managed strategy built on 1inch Aqua + SwapVM, live on Arbitrum. The first product ("Active Reserve"): ~90% of vault capital earns Aave v3 yield at all times; ~10% quotes a buy-the-dip band below spot as a SwapVM program in Aqua mode. A maker hook withdraws from Aave inside the settlement transaction, so parked capital is quotable liquidity: capital earns interest until the exact second it buys the dip.
+
+> **Active Reserve**: An always-earning reserve that buys the dip. Capital earns Aave lending yield every block and is deployed automatically the instant the market dips into the manager's buy band, purchasing ETH below market price. Objective: accumulate ETH at a discount while never sitting idle.
 
 > Hackathon deliverable. Deployed under hard caps with our own capital; likely docked/paused after the event pending audit and licensing. Not investment advice; nothing here is a live retail product.
 
