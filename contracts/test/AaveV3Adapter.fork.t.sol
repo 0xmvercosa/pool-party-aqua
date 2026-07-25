@@ -35,6 +35,16 @@ contract AaveV3AdapterForkTest is Test {
     uint256 internal constant USDC_ONE = 1e6;
     uint256 internal constant WETH_ONE = 1e18;
 
+    /// @dev aToken balances are `scaledBalance * liquidityIndex`, so a supply/withdraw round trip
+    ///      loses a few units to Aave's own rounding, and how many depends on the index at the
+    ///      forked block. These suites run against the LATEST block by design (a pinned block
+    ///      would stop resolving on the public endpoint within days), so position assertions
+    ///      carry an index-robust tolerance of about 1e-6 of the position. The guarantee that
+    ///      actually matters, that `unpark` delivers the EXACT amount requested to the vault,
+    ///      is asserted with `assertEq` and never with a tolerance.
+    uint256 internal constant AAVE_ROUNDING_10K = 10; // on a 10,000 USDC position
+    uint256 internal constant AAVE_ROUNDING_1K = 5; // on a sub 1,000 USDC position
+
     AaveV3Adapter internal adapter;
     address internal vault = makeAddr("vault");
 
@@ -101,7 +111,7 @@ contract AaveV3AdapterForkTest is Test {
     function test_park_suppliesAndHoldsOnlyATokens() public {
         _park(10_000 * USDC_ONE);
 
-        assertApproxEqAbs(adapter.parkedBalance(USDC), 10_000 * USDC_ONE, 1, "parked balance");
+        assertApproxEqAbs(adapter.parkedBalance(USDC), 10_000 * USDC_ONE, AAVE_ROUNDING_10K, "parked balance");
         assertEq(IERC20(USDC).balanceOf(address(adapter)), 0, "no underlying left behind (ADP-R4)");
         assertEq(IERC20(USDC).allowance(address(adapter), AAVE_POOL), 0, "supply consumed the allowance");
         assertGt(IERC20(A_USDC).balanceOf(address(adapter)), 0, "holds aTokens");
@@ -139,7 +149,9 @@ contract AaveV3AdapterForkTest is Test {
 
         assertEq(IERC20(USDC).balanceOf(vault) - vaultBefore, amount, "exact amount to the vault");
         assertEq(IERC20(USDC).balanceOf(address(adapter)), 0, "nothing stuck in the adapter");
-        assertApproxEqAbs(adapter.parkedBalance(USDC), parkedBefore - amount, 1, "position reduced by exactly that");
+        assertApproxEqAbs(
+            adapter.parkedBalance(USDC), parkedBefore - amount, AAVE_ROUNDING_10K, "position reduced by that"
+        );
     }
 
     function testFuzz_unpark_isExactForAnyAmount(uint256 amount) public {
@@ -165,7 +177,7 @@ contract AaveV3AdapterForkTest is Test {
         adapter.unpark(USDC, 5000 * USDC_ONE);
 
         // The position itself is untouched: the vault can retry when liquidity returns.
-        assertApproxEqAbs(adapter.parkedBalance(USDC), 10_000 * USDC_ONE, 1);
+        assertApproxEqAbs(adapter.parkedBalance(USDC), 10_000 * USDC_ONE, AAVE_ROUNDING_10K);
     }
 
     // -------------------------------------------------------------------------------------------
@@ -192,9 +204,9 @@ contract AaveV3AdapterForkTest is Test {
 
         assertEq(IERC20(USDC).balanceOf(taker), fill, "taker paid");
         assertEq(IERC20(USDC).balanceOf(address(stub)), 0, "buffer spent");
-        // Tolerance is Aave's own scaled-balance rounding across the supply and the withdraw, a
-        // couple of USDC units on 950, not a behaviour of ours.
-        assertApproxEqAbs(stubAdapter.parkedBalance(USDC), 700 * USDC_ONE, 3, "only the shortfall left Aave");
+        assertApproxEqAbs(
+            stubAdapter.parkedBalance(USDC), 700 * USDC_ONE, AAVE_ROUNDING_1K, "only the shortfall left Aave"
+        );
         console.log("stub JIT settle gas (hook + Aave withdraw + transfer):", gasUsed);
     }
 
@@ -229,7 +241,9 @@ contract AaveV3AdapterForkTest is Test {
 
         assertEq(IERC20(USDC).balanceOf(taker), amountOut, "taker paid from the vault");
         assertEq(IERC20(WETH).balanceOf(address(partyVault)), amountIn, "vault holds the bought WETH");
-        assertApproxEqAbs(vaultAdapter.parkedBalance(USDC), 700 * USDC_ONE, 3, "exact shortfall unparked");
+        assertApproxEqAbs(
+            vaultAdapter.parkedBalance(USDC), 700 * USDC_ONE, AAVE_ROUNDING_1K, "exact shortfall unparked"
+        );
         assertGe(partyVault.totalAssets(), navBefore, "NAV must not fall on a fill at oracle price");
 
         (uint248 remaining,) = aqua.rawBalances(address(partyVault), address(router), strategyHash, USDC);
