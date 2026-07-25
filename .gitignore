@@ -1,0 +1,20 @@
+# Dependencies and builds
+node_modules/
+.next/
+out/
+coverage/
+cache/
+broadcast/
+
+# Env and secrets: NEVER commit. Repo goes public at hackathon submission.
+.env
+.env.*
+!.env.example
+
+# Foundry
+contracts/cache/
+contracts/out/
+
+# Misc
+.DS_Store
+*.log

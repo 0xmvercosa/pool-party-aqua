@@ -4,22 +4,28 @@
 **Linear:** project "Aqua Strategies (1inch Hackathon)", epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057). All issues are labeled `hackathon` and will probably be turned off/docked after the event.
 **Read first:** `00_ARCHITECTURE_AND_PLAN.md` (architecture + addenda) and `01_BUSINESS_RULES.md` (numbered rules, single source of truth).
 
-## Repo layout (target)
+## Two homes (final structure, Murilo 2026-07-25)
 
 ```
-pool-party-aqua/
-  contracts/            Foundry: PartyVault, AaveV3Adapter, PartyRouter, tests
-  src/                  Next app (App Router)
-    lib/aqua/api/       the internal API MODULE (plays pool-party-api's role): strategy persistence,
-                        on-chain orchestration, domain services (compiler, indexer, nav, keeper, bot).
-                        ONLY layer touching Drizzle/viem (SRV-R1 v2)
-    lib/aqua/config.ts  shared verified addresses (from POO-1058)
-    app/                demo UI routes (investor page, manager page)
-    features/*/operations/  THIN server actions delegating to lib/aqua/api (no business logic)
-    db/                 Drizzle schema + migrations: API-mirror core tables + aqua_* extensions (SRV-R2 v2)
-  scripts/              tsx entrypoints: rehearse, ship, roll, dock, status, aqua:keeper, aqua:taker
-  docs/                 THIS folder: 00/01/02, VERIFIED.md, RUNBOOK.md, FILLS.md
+pool-party-aqua/                    (THIS repo, 0xmvercosa, private now -> public at submission)
+  contracts/                        Foundry: PartyVault, AaveV3Adapter, PartyRouter, tests
+  scripts/                          deploy, fork rehearsal, verification
+  docs/                             THIS folder: 00/01/02, VERIFIED.md, RUNBOOK.md, FILLS.md
+  .env (local only, gitignored)     deployer key, RPC
+
+pool-party-frontend                 branch feat/aqua-poo-1057-hackathon (fully separate, no merge during event)
+  src/lib/aqua/api/                 internal API MODULE (plays pool-party-api's role): strategy persistence,
+                                    on-chain orchestration, domain services (compiler, indexer, nav,
+                                    keeper logic, bot logic). ONLY layer touching Drizzle/viem (SRV-R1 v3)
+  src/lib/aqua/config.ts            shared verified addresses (mirrors VERIFIED.md from POO-1058)
+  src/features/*/operations/        THIN server actions delegating to lib/aqua/api
+  src/db (or drizzle/)              Drizzle over the Neon PROD-MIRROR database + aqua_* extensions (SRV-R2 v3)
+  scripts/aqua/                     tsx entrypoints: pnpm aqua:keeper, pnpm aqua:taker, ship/roll/dock/status
+  investor + manager surfaces       per POO-1064/1067/1068 original bodies (discriminator + aquaStrategies flag)
+  .env.local (gitignored)           DATABASE_URL (prod-mirror), keeper/bot keys, RPC
 ```
+
+**Cross-repo sync points**: contract ABIs + deployed addresses flow from pool-party-aqua (`VERIFIED.md`) into the frontend branch's `src/lib/aqua/config.ts` manually per PR; the compiler consumes ABIs committed as JSON artifacts in the frontend branch. Nothing imports across repos.
 
 ## Issue map
 
@@ -40,7 +46,15 @@ pool-party-aqua/
 | [POO-1068](https://linear.app/yeildbay/issue/POO-1068) | Demo UI: manager surface (re-scoped) | P4 | 1064 | E |
 | [POO-1070](https://linear.app/yeildbay/issue/POO-1070) | Demo runbook + submission package | P2+ | 1065, 1066 | A |
 
-**Day-0 parallel start (no blockers): POO-1058, POO-1071, POO-1059, POO-1060, POO-1063 (dev part).** That is 5 sessions working simultaneously from minute one.
+**Day-0 parallel start (no blockers): POO-1058, POO-1071, POO-1059, POO-1060, POO-1063 (dev part).** That is 5 sessions working simultaneously from minute one. POO-1071 now covers BOTH scaffolds: this repo (Foundry + docs harness) and the frontend hackathon branch (API module + Drizzle over the prod mirror + actions + scripts).
+
+## Compressed schedule (D7 RESOLVED: demo THIS WEEK)
+
+Priority order when time runs short, cut from the bottom:
+1. **Must ship**: P0 (1058), scaffolds (1071), vault + adapter (1059/1060), compiler (1061), mainnet launch (1062), first real fills (1066 MVP), demo package (1070).
+2. **Should ship**: indexer/NAV report (1065), keepers (1069 at least roll + price sentinel), investor surface minimal (1067).
+3. **Conditional cut**: PartyRouter (1063; the sentinel keeper is the documented fallback for price protection), arb mode of the bot, manager surface (1068; ship/roll via CLI scripts is an acceptable demo path), full UI polish.
+UI minimal-first: one investor strategy page + invest/withdraw is worth more in the demo than two polished consoles.
 
 ## Coordination protocol for parallel sessions/agents
 

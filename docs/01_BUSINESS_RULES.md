@@ -1,7 +1,7 @@
 # Aqua Strategies: Business Rules (v1)
 
 **Date:** 2026-07-25
-**Status:** v1. Rules marked with a decision tag (D3, D4, D5, D9) use PROPOSED defaults until Murilo confirms on the epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057). Any rule change after confirmation increments the version here, on the issue labels (`rules:vN`), and in file headers, per the project's rule-versioning discipline.
+**Status:** v1 (SRV section at v3). Decisions D1-D7, D9, D10 are RESOLVED (2026-07-25); only D8 (product name) remains open. History on the epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057). Any rule change after confirmation increments the version here, on the issue labels (`rules:vN`), and in file headers, per the project's rule-versioning discipline.
 **Scope:** single source of truth for all numbered rules of the Aqua hackathon build. Each Linear issue embeds its own subset verbatim; on divergence, THIS FILE wins and the issue must be re-synced. Canonical home: `docs/` of this dedicated hackathon repo.
 
 Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + database), PRG (program compiler), KPR (keepers), BOT (taker bot), IDX (indexer/NAV), RTR (PartyRouter), FE (frontend). Cross-references use `VLT-R4` style.
@@ -15,11 +15,11 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 - **VLT-R1** Deposits are USDC only. Shares minted with OpenZeppelin ERC-4626 math internally (same conversion formulas, rounding down, decimals offset +3 anti-inflation). Deposit reverts if resulting TVL > `maxTvl`.
 - **VLT-R2** The first deposit must come from the MANAGER address (manager seed); other deposits revert until seeded.
 - **VLT-R3** No ERC-20 share token: internal `mapping(address => shares)`, no Transfer events, transfers impossible by construction. Public views `sharesOf`, `convertToShares`, `convertToAssets`, `totalAssets`; events `Deposited(investor, assets, shares)`, `Redeemed(investor, assets, shares)`.
-- **VLT-R4** `totalAssets` = wallet USDC + `adapter.parkedBalance(USDC)` + wallet WETH valued at Chainlink ETH/USD. Feed stale beyond `maxStaleness` (D9: 90 min PROPOSED) makes deposit and redeem revert. No NAV without a fresh price.
+- **VLT-R4** `totalAssets` = wallet USDC + `adapter.parkedBalance(USDC)` + wallet WETH valued at Chainlink ETH/USD. Feed stale beyond `maxStaleness` (D9 RESOLVED: 90 min) makes deposit and redeem revert. No NAV without a fresh price.
 - **VLT-R5** Redemption burns shares, pays USDC only. Insufficient liquid USDC (buffer + parked) reverts with `InsufficientLiquidUsdc`. No in-kind payout in v1.
-- **VLT-R6** Lockup `lockupDays` per vault param (D4: 0 days PROPOSED for hackathon); early redeem reverts.
+- **VLT-R6** Lockup `lockupDays` per vault param (D4 RESOLVED: 0 days for the hackathon); early redeem reverts.
 - **VLT-R7** Roles: MANAGER and KEEPER may call `execShip` / `execDock` / `dockAll` only, restricted to allowlisted routers and tokens, per-token ship amount <= `maxPerShip`. No role has a path that transfers funds to an arbitrary address. No upgradability. No pause-and-take.
-- **VLT-R8** Performance fee `perfFeeBps` (D4: 20% PROPOSED) on share-price high-water mark, accrued as newly minted shares to MANAGER on deposit / redeem / `accrueFee()`. Global HWM is sound because shares are non-transferable. Protocol fee lives in the program (PRG-R7), not the vault.
+- **VLT-R8** Performance fee `perfFeeBps` (D4 RESOLVED: 20%) on share-price high-water mark, accrued as newly minted shares to MANAGER on deposit / redeem / `accrueFee()`. Global HWM is sound because shares are non-transferable. Protocol fee lives in the program (PRG-R7), not the vault.
 - **VLT-R9** `onPreTransferOut(token, amount)` callable only by an allowlisted router during settlement; unparks the shortfall beyond the hot buffer. Sweep back to adapter is keeper-driven (KPR-R5).
 - **VLT-R10** Caps (`maxTvl`, `maxPerShip`, allowlists, buffer target) adjustable by MANAGER only.
 - **VLT-R11** `dockAll()` docks every active strategy; MANAGER or KEEPER; accounting-only emergency stop.
@@ -33,24 +33,24 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 - **ADP-R5** No admin or rescue functions in v1; replacement = new vault deployment.
 - Frozen interface: `park(address,uint256)`, `unpark(address,uint256)`, `parkedBalance(address) returns (uint256)`.
 
-## SRV: Server module + database ([POO-1071](https://linear.app/yeildbay/issue/POO-1071)) - **v2** (refined by Murilo 2026-07-25: internal API module + DB mirrors the real API)
+## SRV: Server module + database ([POO-1071](https://linear.app/yeildbay/issue/POO-1071)) - **v3** (Murilo 2026-07-25: internal API module; DB is a Neon prod mirror; module lives in the pool-party-frontend hackathon branch)
 
-- **SRV-R1 (v2)** Strict layering, three tiers, all inside this Next app: (1) thin **server actions** (input validation + session/auth only, zero business logic); (2) the **Aqua API module** (`src/lib/aqua/api/`, server-only), which plays the role of pool-party-api for this app: saves strategies/mandates to the database, orchestrates on-chain calls (sends keeper/bot txs with server-side keys; returns BuiltTx payloads for anything a wallet must sign), and hosts the domain services (compiler, indexer/NAV, keeper logic, bot logic); (3) infra clients (Drizzle, viem). The API module is the ONLY layer allowed to touch Drizzle or viem. No separate backend service exists.
-- **SRV-R2 (v2)** The database MIRRORS the pool-party-api domain model wherever domains overlap (strategies catalog, positions/holdings, activity events), so post-hackathon migration to the real API is a module swap, not a rewrite. Aqua-specific tables extend that mirrored core: `aqua_ships` (strategyHash, program bytes, epoch, status), `aqua_fills`, `aqua_nav_snapshots`, `aqua_keeper_log`. Drizzle migrations; money columns as numeric strings (never JS float).
+- **SRV-R1 (v3)** Strict layering, three tiers, all inside the pool-party-frontend Next app on the dedicated hackathon branch (`feat/aqua-poo-1057-hackathon`, never merged during the event): (1) thin **server actions** (input validation + session/auth only, zero business logic); (2) the **Aqua API module** (`src/lib/aqua/api/`, server-only), which plays the role of pool-party-api for this app: saves strategies/mandates to the database, orchestrates on-chain calls (sends keeper/bot txs with server-side keys; returns BuiltTx payloads for anything a wallet must sign), and hosts the domain services (compiler, indexer/NAV, keeper logic, bot logic); (3) infra clients (Drizzle, viem). The API module is the ONLY layer allowed to touch Drizzle or viem. No separate backend service exists.
+- **SRV-R2 (v3)** The database is the **Neon mirror of prod created by Murilo (2026-07-25)**: it already carries the real pool-party-api data model and data. The aqua module introspects that schema and EXTENDS it with `aqua_ships` (strategyHash, program bytes, epoch, status), `aqua_fills`, `aqua_nav_snapshots`, `aqua_keeper_log` via Drizzle migrations; money columns as numeric strings (never JS float). SECURITY: the connection string lives ONLY in local `.env` files (gitignored), never in code, docs, Linear, or commits; no data from the mirror may ever be committed anywhere (the pool-party-aqua repo goes public at submission); rotate the credential after the hackathon.
 - **SRV-R3** Long-running processes (keeper loop, taker bot) execute the SAME server module via repo scripts (`pnpm aqua:keeper`, `pnpm aqua:taker`, tsx), not inside request handlers. A route handler + external cron is an accepted later alternative; Vercel cron is NOT assumed (real mode deploys to AWS dev).
 - **SRV-R4** Keeper key, bot key, and RPC URLs are server env only; never `NEXT_PUBLIC_*`; never imported client-side.
 - **SRV-R5** Anything a wallet signs (manager or investor) is returned by a server action as a `builtTxSchema`-validated payload consumed by `useWalletSignFlow`, matching the existing trust boundary.
-- **SRV-R6** Solidity contracts (PartyVault, adapter, PartyRouter) live in this same repo under `contracts/` (Foundry workspace), outside the Next module boundary (D1 resolved: one dedicated repo for everything).
+- **SRV-R6** Solidity contracts (PartyVault, adapter, PartyRouter) live in the dedicated `pool-party-aqua` repo under `contracts/` (Foundry), together with deploy/rehearsal scripts and the canonical docs; the Next module and UI live in the pool-party-frontend hackathon branch (two homes, epic Structure update).
 
 ## PRG: Program compiler ([POO-1061](https://linear.app/yeildbay/issue/POO-1061))
 
 - **PRG-R1** Canonical program order, always: `[deadline][AquaProtocolFeeAmountIn][flatFeeAmountInXD][concentrateGrowLiquidity2D][salt]`. Curve instructions are TERMINAL; a fee emitted after the curve is a bug (silently never applied).
 - **PRG-R2** Ship registers BOTH tokens; empty side ships amount 0 (upstream reverts otherwise).
 - **PRG-R3** Band entirely below spot at build time: `bandHigh <= chainlinkSpot * 0.98`; compiler refuses otherwise.
-- **PRG-R4** `deadline` = epoch end (D5: 7 days PROPOSED); `salt` = epoch id (docked strategyHash is dead forever).
-- **PRG-R5** Shipped USDC <= min(`maxPerShip`, `bandSleevePct` x totalAssets) (D5: 10% PROPOSED).
+- **PRG-R4** `deadline` = epoch end (D5 RESOLVED: **3 days**, Murilo picked the short epoch for more live rolls); `salt` = epoch id (docked strategyHash is dead forever).
+- **PRG-R5** Shipped USDC <= min(`maxPerShip`, `bandSleevePct` x totalAssets) (D5 RESOLVED: 10%).
 - **PRG-R6** Coverage v1 = 1.0: sum of shipped USDC across active strategies <= vault total USDC. No over-commit in v1 (SLAC deferred to later products).
-- **PRG-R7** Program fees per D4 (PROPOSED: protocol 5 bps to treasury via `AquaProtocolFeeAmountIn`; flat fee 80 bps dip premium). Only allowlisted routers as `app`.
+- **PRG-R7** Program fees per D4 (RESOLVED: protocol 5 bps to treasury via `AquaProtocolFeeAmountIn`; flat fee 80 bps dip premium). Only allowlisted routers as `app`.
 - **PRG-R8** Roll = `dock(old) + ship(new)` batched in one action.
 - Frozen mandate shape: `{ pair: {base: WETH, quote: USDC}, bandLowPct, bandHighPct, feeBps, epochDays, bandSleevePct, maxPerShip }`.
 
@@ -85,7 +85,7 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 
 - **RTR-R1** Only changes vs official SwapVM source: one `OpcodeList.sol` slot claim, one dispatch line, one router contract. Diff fits on one screen.
 - **RTR-R2** We write the missing tests: quote/swap parity with the adjuster, staleness revert, `maxPriceDecay` clamp both directions, fuzz.
-- **RTR-R3** Params per D9 (PROPOSED: maxPriceDecay 50 bps, maxStaleness 90 min). Feed address is a program argument.
+- **RTR-R3** Params per D9 (RESOLVED: maxPriceDecay 50 bps, maxStaleness 90 min). Feed address is a program argument.
 - **RTR-R4** Source published (Degensoft copyleft + hackathon requirement); Arbiscan-verified.
 - **RTR-R5** Migration: allowlist PartyRouter in the vault, roll live strategy onto an oracle-guarded program; official router stays allowlisted as fallback during the hackathon.
 - **RTR-R6** Compiler emits the oracle instruction only when targeting PartyRouter.
