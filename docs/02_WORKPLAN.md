@@ -48,7 +48,7 @@ pool-party-frontend                 branch feat/aqua-poo-1057-hackathon (fully s
 
 **Day-0 parallel start (no blockers): POO-1058, POO-1071, POO-1059, POO-1060, POO-1063 (dev part).** That is 5 sessions working simultaneously from minute one. POO-1071 now covers BOTH scaffolds: this repo (Foundry + docs harness) and the frontend hackathon branch (API module + Drizzle over the prod mirror + actions + scripts).
 
-## Compressed schedule (D7 RESOLVED: demo THIS WEEK)
+## Compressed schedule (D7 UPDATED 2026-07-25: **20 HOURS**; the wave plan + scope cuts in `03_EXECUTION_PLAN.md` section 6 override this section and the issue bodies)
 
 Priority order when time runs short, cut from the bottom:
 1. **Must ship**: P0 (1058), scaffolds (1071), vault + adapter (1059/1060), compiler (1061), mainnet launch (1062), first real fills (1066 MVP), demo package (1070).

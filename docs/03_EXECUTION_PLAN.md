@@ -3,7 +3,7 @@
 **Date:** 2026-07-25
 **Audience:** the whole hackathon team (humans and agent sessions). Share freely.
 **Status:** all decisions resolved (D1-D10). Execution can start immediately.
-**Deadline:** final demo THIS WEEK (D7). The schedule below is relative (Day 0 = today); fill in the exact demo date when known.
+**Deadline (D7 UPDATED 2026-07-25): 20 HOURS from kickoff.** The schedule in section 6 is a wall-clock wave plan for parallel sessions; the scope cuts in section 6.1 are in force and override any wider scope stated in the issues.
 **Linear:** project [Aqua Strategies (1inch Hackathon)](https://linear.app/yeildbay/project/aqua-strategies-1inch-hackathon-bfbf16b06ef7) - epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057)
 **Repos:** on-chain side [github.com/0xmvercosa/pool-party-aqua](https://github.com/0xmvercosa/pool-party-aqua) (private now, PUBLIC at submission) - app side `pool-party-frontend`, branch `feat/aqua-poo-1057-hackathon`
 **Companion docs (read before picking up any issue):** [00_ARCHITECTURE_AND_PLAN.md](./00_ARCHITECTURE_AND_PLAN.md) (architecture; read the Addenda block first), [01_BUSINESS_RULES.md](./01_BUSINESS_RULES.md) (numbered rules, single source of truth), [02_WORKPLAN.md](./02_WORKPLAN.md) (coordination protocol, frozen interfaces)
@@ -114,18 +114,26 @@ Minimal cut per D7: strategy detail page + Invest (vault deposit) + Withdraw (re
 **[POO-1068](https://linear.app/yeildbay/issue/POO-1068) - Manager surface** (2d, CONDITIONAL CUT; blocked by 1064)
 Mandate form (frozen shape) + compiled review + manage view (band vs price, coverage, epoch countdown, Roll CTA, fills feed, Dock-all). Per D7 this is built only after 1067's minimal cut; CLI ship/roll/dock is the accepted manager demo path.
 
-## 6. Suggested day-by-day schedule (relative; demo this week)
+## 6. The 20-hour wave plan (wall-clock, parallel sessions)
 
-| Day | Goal | Issues in flight |
+### 6.1 Scope cuts in force (override issue bodies)
+
+- **CUT entirely**: [POO-1063](https://linear.app/yeildbay/issue/POO-1063) PartyRouter (fallback: manual ops + honest note in the demo that the oracle guard is the designed next step; the sentinel story becomes "manager watch + dockAll", documented in the runbook), [POO-1068](https://linear.app/yeildbay/issue/POO-1068) manager UI (CLI ship/roll/dock IS the manager demo), [POO-1069](https://linear.app/yeildbay/issue/POO-1069) keeper loop (all ops manual via CLI during the window; the 3-day epoch will not elapse anyway; the "roll" demo is one manual dock+ship showing the two-accounting-writes magic), arb mode of the bot (BOT-R2), [POO-1064](https://linear.app/yeildbay/issue/POO-1064) main-app schema work.
+- **REDUCED**: [POO-1065](https://linear.app/yeildbay/issue/POO-1065) indexer becomes a **status/report script** (`pnpm aqua:status`): reads `rawBalances`, `parkedBalance`, wallet balances, decodes recent `Pulled/Pushed/Swapped` logs, prints NAV + a simple carry-vs-fills attribution. No DB-backed series. [POO-1071](https://linear.app/yeildbay/issue/POO-1071) Drizzle scope shrinks to TWO tables (`aqua_ships`, `aqua_fills`); mirror introspection deferred. [POO-1059](https://linear.app/yeildbay/issue/POO-1059) keeps all rules but test depth targets the essentials: share-math properties (inflation attack), role boundaries, caps, JIT hook path.
+- **STRETCH ONLY (zero critical path)**: [POO-1067](https://linear.app/yeildbay/issue/POO-1067) as ONE ultra-minimal page (vault views + Deposit/Redeem buttons) only if a dedicated session runs it fully in parallel; the demo qualifies with scripts alone per the hackathon brief ("test scripts or UI").
+- **UNCHANGED**: [POO-1058](https://linear.app/yeildbay/issue/POO-1058), [POO-1060](https://linear.app/yeildbay/issue/POO-1060), [POO-1061](https://linear.app/yeildbay/issue/POO-1061), [POO-1062](https://linear.app/yeildbay/issue/POO-1062), [POO-1066](https://linear.app/yeildbay/issue/POO-1066) MVP, [POO-1070](https://linear.app/yeildbay/issue/POO-1070).
+
+### 6.2 Waves
+
+| Window | Goal | In flight (parallel) |
 |---|---|---|
-| **0 (today)** | Kick off 4-5 parallel sessions; addresses verified by EOD | 1058, 1071, 1059, 1060, (1063 dev if staffed) |
-| **1** | Rehearsal green on fork; scaffolds merged; compiler under way; vault/adapter tests passing | finish 1058 + 1071; 1061; 1059/1060 continue; 1065/1066 fork dev may start |
-| **2** | **Mainnet launch**: vault + adapter deployed, capped, seeded, first ship live | 1062; 1066 MVP first real fills right after; 1069 roll + sentinel; 1064 |
-| **3** | Fills accumulating (incl. one JIT trace); accounting visible; UI minimal | 1065 live; 1067 minimal; 1063 tests/deploy if on track; 1070 README starts |
-| **4** | Router migration if kept; UI done; demo assets captured | 1063 migration; 1067 finish; 1068 only if ahead; 1070 runbook + recording |
-| **5 / demo day** | Dry-run, final package, flip-to-public checklist | 1070 close; buffer for anything red |
+| **T+0 to T+3** | Ground truth + skeletons + Solidity underway | [1058](https://linear.app/yeildbay/issue/POO-1058) verify/rehearsal; [1071](https://linear.app/yeildbay/issue/POO-1071) minimal scaffolds; [1059](https://linear.app/yeildbay/issue/POO-1059) vault; [1060](https://linear.app/yeildbay/issue/POO-1060) adapter |
+| **T+3 to T+8** | Rehearsal green; contracts tested; compiler done; taker ready on fork | finish 1058/1071; 1059/1060 tests; [1061](https://linear.app/yeildbay/issue/POO-1061) compiler + CLI; [1066](https://linear.app/yeildbay/issue/POO-1066) taker on fork; [1070](https://linear.app/yeildbay/issue/POO-1070) README skeleton |
+| **T+8 to T+12** | **MAINNET LAUNCH** | [1062](https://linear.app/yeildbay/issue/POO-1062): deploy, verify, caps, seed, first ship, smoke test; then 1066 first real fills including one bigger than the hot buffer (the JIT money-shot trace) |
+| **T+12 to T+17** | Evidence accumulation + ops demo | more fills into `FILLS.md`; manual roll demo (dock+ship); [1065](https://linear.app/yeildbay/issue/POO-1065) status/attribution report; 1067 stretch page if staffed; 1070 runbook writing |
+| **T+17 to T+20** | Package + dry run | recording, submission checklist, secret scan, flip-to-public decision, full demo dry run, buffer |
 
-Gate rule for the week: at the end of each day, anything from the "must ship" tier ([02_WORKPLAN.md](./02_WORKPLAN.md) section "Compressed schedule") that is red pulls people off "should/conditional" work immediately.
+**Gate rule (every ~3h checkpoint):** any red item in {1058, 1071, 1059, 1060, 1061, 1062, 1066-MVP, 1070} immediately pulls every session off reduced/stretch work. The single hard milestone is the launch wave at T+8: if blockers are not closing by T+6, cut vault test depth further (keep inflation + roles + JIT) rather than slipping the launch.
 
 ## 7. Coordination protocol (summary; canonical in 02_WORKPLAN.md)
 
@@ -166,10 +174,11 @@ Gate rule for the week: at the end of each day, anything from the "must ship" ti
 | Aave utilization spike blocks JIT | Hot buffer + pull-revert = illiquid-not-insolvent + honest UI state ([POO-1060](https://linear.app/yeildbay/issue/POO-1060) ADP-R2, [POO-1067](https://linear.app/yeildbay/issue/POO-1067) FE-R5) |
 | Fork-frozen Chainlink in tests | Mock aggregator / storage poke in fork tests only; production feeds update normally ([POO-1063](https://linear.app/yeildbay/issue/POO-1063)) |
 
-## 11. Definition of done (hackathon)
+## 11. Definition of done (20-hour window)
 
-1. Active Reserve live on Arbitrum mainnet under D3 caps with >= 3 real fills logged, at least one exercising the JIT Aave path.
-2. PartyRouter deployed + strategy migrated, OR consciously cut with the sentinel documented as price protection.
-3. Investor can deposit and redeem through the app (minimal 1067 cut) behind the flag.
-4. Demo runbook reproducible cold by a teammate; submission checklist ticked; repo public with clean history.
-5. Post-event epilogue executed: strategies docked, caps to zero, DB credential rotated, decisions log closed on [POO-1057](https://linear.app/yeildbay/issue/POO-1057).
+1. Active Reserve live on Arbitrum mainnet under D3 caps with >= 3 real fills logged, at least one exercising the JIT Aave path (aUSDC burn + `Pulled` + `push` in one tx).
+2. One manual roll executed live (dock + ship) proving the two-accounting-writes re-range.
+3. `pnpm aqua:status` report showing NAV + carry-vs-fills attribution from live chain data.
+4. Demo runbook + recording done; submission checklist ticked; secret scan clean; repo flipped public; commit history phased across both repos.
+5. Consciously-cut items (PartyRouter, keepers, manager UI, arb mode) named honestly in the README as designed next steps, with the manual-ops fallback documented in the runbook.
+6. Post-event epilogue: strategies docked, caps to zero, DB credential rotated, decisions log closed on [POO-1057](https://linear.app/yeildbay/issue/POO-1057).
