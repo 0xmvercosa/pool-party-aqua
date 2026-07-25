@@ -18,3 +18,7 @@ contracts/out/
 # Misc
 .DS_Store
 *.log
+
+# Fork fixture build output (regenerate with pnpm fixtures:build)
+scripts/fixtures/out/
+scripts/fixtures/cache/
