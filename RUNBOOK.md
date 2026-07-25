@@ -220,11 +220,11 @@ Filled in during the live run.
 | Deploy txs | adapter `0x3b2b729700b60f14d1b340382d2ade637161662656d933419b26647068a855ae` (block 487662396), vault `0x5b77b43198e12e0917a99d73c6238ee16b9531a429769b803daf53faf528263a` (block 487662407), total 0.0000686 ETH |
 | Arbiscan verification | both Pass - Verified via Etherscan API V2 (2026-07-25) |
 | maxTvl at launch | 200 USDC (seed 10 USDC per re-amended D3) |
-| Seed tx / amount | |
-| Park tx / amount | |
-| Production band strategyHash / ship tx | |
-| Demo band strategyHash / ship tx | |
-| Smoke test output | |
+| Seed tx / amount | `0x0cfc605e070923cbe816b1656d76fd2889cc209de21105742ee45e380d22bbf3` / 10 USDC (10e9 shares) |
+| Park tx / amount | `0x05383f15007141f67a8c7c8528390e8fb3f9b0e3ffc80e89e4b9d25dfc2c4787` / 9.5 USDC to Aave, 0.5 hot |
+| Production band strategyHash / ship tx | `0xafbd59da3040256990b3584b56930acd0befc0ee1ccbfa7bc87b0c7496818260` / `0xdbebc9caa1ddd2f2164db6f435605e1512fc3bc293328680f7079971e8ed094d` (block 487666286, 0.4 USDC, band $1592.20-$1779.52) |
+| Demo band strategyHash / ship tx | `0x77097fd33011a87bf7a5be80dde5043f28bfaa130758ab77363133f0120810cf` / `0x988f774a1284fd6fbcf6e7c6afde30b9b6550da04d8edbe060f40c522b130ba9` (block 487665802, 0.6 USDC, band $1867.56-$1871.30) |
+| Smoke test output | 2026-07-25: seeded, totalAssets 10.000002 (Aave carry already accruing), 2 active strategies with 0.6/0.4 USDC virtual, allowance max, WETH 0 |
 | First fill (incl. the JIT trace) | see `docs/FILLS.md` |
 
 ## 11. Post-event epilogue
