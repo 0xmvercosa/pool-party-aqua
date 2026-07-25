@@ -131,7 +131,8 @@ Trap C is worth reading twice. The upstream claim is that a post-curve fee is "s
 ## Reproduction commands
 
 ```bash
-pnpm verify:onchain   # every claim above marked [x], from a clean checkout, no tx sent
+pnpm verify:onchain   # the pure-RPC claims (addresses, live ships, builder round-trip), no tx sent
+pnpm fixtures:build && pnpm rehearse:all   # the fork-dependent claims (rehearsal green, hook firing, traps); needs anvil
 
 export ETH_RPC_URL=https://arb1.arbitrum.io/rpc
 cast call 0x1111113db0e0ef9d0e3a50d5f094a3a57a26c0de "AQUA()(address)"      # gen-2 pair

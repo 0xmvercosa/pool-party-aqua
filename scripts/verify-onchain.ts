@@ -18,6 +18,7 @@ import {
   DEAD_GEN1_REGISTRY,
   DEAD_GEN1_ROUTER,
   REFERENCE_SHIP_TX,
+  GEN2_FIRST_ACTIVITY_BLOCK,
 } from "./lib/addresses.ts";
 import { mainnetClient } from "./lib/clients.ts";
 import { fail, heading, info, pass } from "./lib/format.ts";
@@ -135,8 +136,9 @@ async function fetchLiveShips(): Promise<LiveShip[]> {
 
   const head = await client.getBlockNumber();
   const CHUNK = 100_000n;
-  const WINDOW = 3_000_000n; // gen-2 activity started 2026-07-20; Arbitrum runs ~345k blocks/day
-  const floor = head > WINDOW ? head - WINDOW : 0n;
+  // Fixed floor, not a rolling window: the reference-ship check below must keep passing for
+  // anyone reproducing this later, and a head-minus-N window silently ages ship #0 out.
+  const floor = GEN2_FIRST_ACTIVITY_BLOCK;
 
   const ships: LiveShip[] = [];
   let to = head;
@@ -165,7 +167,7 @@ async function fetchLiveShips(): Promise<LiveShip[]> {
   }
 
   ships.sort((a, b) => (a.blockNumber < b.blockNumber ? -1 : 1));
-  info(`found ${ships.length} Shipped events on the gen-2 registry in the last ${WINDOW} blocks`);
+  info(`found ${ships.length} Shipped events on the gen-2 registry since its first activity block`);
   for (const ship of ships) {
     info(`  block ${ship.blockNumber} tx ${ship.txHash} maker ${ship.maker}`);
   }

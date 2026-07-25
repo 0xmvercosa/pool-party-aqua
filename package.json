@@ -12,8 +12,6 @@
   "scripts": {
     "rehearse": "tsx scripts/rehearse.ts",
     "verify:onchain": "tsx scripts/verify-onchain.ts",
-    "taker": "tsx scripts/taker.ts",
-    "status": "tsx scripts/status.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "gate": "pnpm typecheck && pnpm test",

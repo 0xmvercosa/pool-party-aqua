@@ -4,7 +4,7 @@
  * The instruction takes sqrt prices in 1e18 fixed point where P = tokenGt / tokenLt in RAW
  * token units (tokenGt/tokenLt ordered by address, not by role). Getting the decimals wrong
  * here silently produces a band nowhere near the market, so the conversion is derived once,
- * here, and verified against live ship #0 in tests.
+ * here, and pinned by scripts/lib/band.test.ts (exact-arithmetic identities).
  *
  * For our pair WETH (0x82aF..., 18dp) < USDC (0xaf88..., 6dp):
  *   tokenLt = WETH, tokenGt = USDC, P = USDC_raw per WETH_raw

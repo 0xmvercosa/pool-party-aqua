@@ -12,7 +12,8 @@
  *   F. the tokenOut fee opcode is not buildable in Aqua mode     -> PRG-R7 verdict
  *   G. a docked strategyHash is dead forever                     -> PRG-R10
  *
- * Prereq: anvil --fork-url <arbitrum rpc> --port 8545
+ * Prereq: pnpm fixtures:build   (forge build of scripts/fixtures; output is gitignored)
+ *         anvil --fork-url <arbitrum rpc> --port 8545
  * Run:    pnpm rehearse:traps
  */
 import { AquaProtocolContract } from "@1inch/aqua-sdk";
@@ -39,13 +40,30 @@ import {
   parseUnits,
   toFunctionSelector,
 } from "viem";
-import stubAdapterArtifact from "./fixtures/out/StubMaker.sol/StubAdapter.json" with { type: "json" };
-import stubMakerArtifact from "./fixtures/out/StubMaker.sol/StubMaker.json" with { type: "json" };
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { AQUA_REGISTRY, AQUA_SWAP_VM_ROUTER, CHAINLINK_ETH_USD, DECIMALS, TOKENS } from "./lib/addresses.ts";
 import { type Band, bandFromSpot, concentrateArgsFor } from "./lib/band.ts";
 import { TOPICS, topicOf } from "./lib/events.ts";
 import { fund, makerAccount, takerAccount, testClient, transferFromWhale, walletFor } from "./lib/fork.ts";
 import { fail, formatUnits, heading, info, pass } from "./lib/format.ts";
+
+
+// Forge build output is gitignored; load it at runtime so `pnpm typecheck` stays green on a
+// clean checkout and the missing-prereq failure mode is a clear message, not a TS2307.
+type ForgeArtifact = { abi: unknown[]; bytecode: { object: `0x${string}` } };
+function loadFixture(name: string): ForgeArtifact {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const path = join(here, "fixtures", "out", "StubMaker.sol", `${name}.json`);
+  if (!existsSync(path)) {
+    console.error(`Missing fixture artifact ${path}. Run: pnpm fixtures:build`);
+    process.exit(1);
+  }
+  return JSON.parse(readFileSync(path, "utf8")) as ForgeArtifact;
+}
+const stubMakerArtifact = loadFixture("StubMaker");
+const stubAdapterArtifact = loadFixture("StubAdapter");
 
 const test = testClient();
 const makerWallet = walletFor(makerAccount);
