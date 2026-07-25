@@ -9,7 +9,7 @@
  * Prereq: anvil --fork-url <arbitrum rpc> --port 8545
  * Run:    pnpm rehearse
  */
-import { AquaProtocolContract, DockedEvent, PulledEvent, PushedEvent, ShippedEvent } from "@1inch/aqua-sdk";
+import { AquaProtocolContract } from "@1inch/aqua-sdk";
 import {
   Address,
   AquaProgramBuilder,
@@ -17,9 +17,7 @@ import {
   MakerTraits,
   Order,
   SwapVMContract,
-  SwappedEvent,
   TakerTraits,
-  instructions,
 } from "@1inch/swap-vm-sdk";
 import { decodeFunctionResult, erc20Abi, keccak256, parseEther, parseUnits } from "viem";
 import {
@@ -30,6 +28,7 @@ import {
   TOKENS,
 } from "./lib/addresses.ts";
 import { type Band, bandFromSpot, concentrateArgsFor, describeBand } from "./lib/band.ts";
+import { TOPICS, parsePulled, parsePushed, parseShipped, parseSwapped, topicOf } from "./lib/events.ts";
 import { fund, makerAccount, takerAccount, testClient, walletFor } from "./lib/fork.ts";
 import { fail, formatUnits, heading, info, pass } from "./lib/format.ts";
 import { renderInstructions } from "./lib/program.ts";
@@ -278,10 +277,10 @@ async function main(): Promise<void> {
   );
 
   const shipReceipt = await test.getTransactionReceipt({ hash: shipTx });
-  const shippedLog = shipReceipt.logs.find((l) => l.topics[0] === ShippedEvent.TOPIC.toString());
+  const shippedLog = shipReceipt.logs.find((l) => topicOf(l) === TOPICS.shipped);
   check(!!shippedLog, "Shipped event emitted");
   if (shippedLog) {
-    const parsed = ShippedEvent.fromLog({ topics: [...shippedLog.topics], data: shippedLog.data });
+    const parsed = parseShipped(shippedLog);
     check(
       parsed.strategy.toString().toLowerCase() === order.encode().toString().toLowerCase(),
       "Shipped.strategy is the ABI-encoded Order we built (taker can reconstruct it from chain alone)",
@@ -349,22 +348,27 @@ async function main(): Promise<void> {
 
   heading("7. Decode Pulled / Pushed / Swapped");
   for (const log of swapReceipt.logs) {
-    const topic = log.topics[0];
-    const like = { topics: [...log.topics], data: log.data };
-    if (topic === PulledEvent.TOPIC.toString()) {
-      const e = PulledEvent.fromLog(like);
-      info(`  Pulled  token=${e.token} amount=${e.amount} (maker pays out)`);
-    } else if (topic === PushedEvent.TOPIC.toString()) {
-      const e = PushedEvent.fromLog(like);
-      info(`  Pushed  token=${e.token} amount=${e.amount} (maker receives)`);
-    } else if (topic === SwappedEvent.TOPIC.toString()) {
-      const e = SwappedEvent.fromLog(like);
-      info(`  Swapped in=${e.amountIn} out=${e.amountOut} taker=${e.taker}`);
-      check(e.amountOut === expected.amountOut, "  Swapped.amountOut matches the pre-trade quote exactly");
+    switch (topicOf(log)) {
+      case TOPICS.pulled: {
+        const e = parsePulled(log);
+        info(`  Pulled  token=${e.token} amount=${e.amount} (maker pays out)`);
+        break;
+      }
+      case TOPICS.pushed: {
+        const e = parsePushed(log);
+        info(`  Pushed  token=${e.token} amount=${e.amount} (maker receives)`);
+        break;
+      }
+      case TOPICS.swapped: {
+        const e = parseSwapped(log);
+        info(`  Swapped in=${e.amountIn} out=${e.amountOut} taker=${e.taker}`);
+        check(e.amountOut === expected.amountOut, "  Swapped.amountOut matches the pre-trade quote exactly");
+        break;
+      }
     }
   }
-  const pulled = swapReceipt.logs.some((l) => l.topics[0] === PulledEvent.TOPIC.toString());
-  const pushed = swapReceipt.logs.some((l) => l.topics[0] === PushedEvent.TOPIC.toString());
+  const pulled = swapReceipt.logs.some((l) => topicOf(l) === TOPICS.pulled);
+  const pushed = swapReceipt.logs.some((l) => topicOf(l) === TOPICS.pushed);
   check(pulled, "Pulled emitted (USDC left the maker's Aqua balance)");
   check(pushed, "Pushed emitted (WETH landed in the maker's Aqua balance on the amount-0 side)");
 
@@ -397,7 +401,7 @@ async function main(): Promise<void> {
   const dockReceipt = await test.waitForTransactionReceipt({ hash: dockTx });
   info(`dock tx ${dockTx} status=${dockReceipt.status}`);
   check(dockReceipt.status === "success", "dock() succeeded");
-  const docked = dockReceipt.logs.some((l) => l.topics[0] === DockedEvent.TOPIC.toString());
+  const docked = dockReceipt.logs.some((l) => topicOf(l) === TOPICS.docked);
   check(docked, "Docked event emitted");
 
   const [usdcDocked] = await test.readContract({
@@ -421,7 +425,6 @@ async function main(): Promise<void> {
   console.log(`  swap  ${swapTx}`);
   console.log(`  dock  ${dockTx}`);
   console.log(`  strategyHash ${strategyHash}`);
-  void instructions;
 }
 
 main().catch((error) => {
