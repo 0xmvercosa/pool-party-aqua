@@ -48,8 +48,6 @@ contract MockSwapVMRouter {
 
     /// @notice Calls only the maker hook, for gating tests.
     function callHookOnly(address maker, address hookMaker, address tokenOut, uint256 amountOut) external {
-        IMakerHooks(maker).preTransferOut(
-            hookMaker, msg.sender, address(0), tokenOut, 0, amountOut, bytes32(0), "", ""
-        );
+        IMakerHooks(maker).preTransferOut(hookMaker, msg.sender, address(0), tokenOut, 0, amountOut, bytes32(0), "", "");
     }
 }

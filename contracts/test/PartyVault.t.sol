@@ -22,7 +22,7 @@ import { MockSwapVMRouter } from "./mocks/MockSwapVMRouter.sol";
 contract PartyVaultTest is Test {
     uint256 private constant USDC_ONE = 1e6;
     uint256 private constant WETH_ONE = 1e18;
-    int256 private constant ETH_USD = 3_000e8;
+    int256 private constant ETH_USD = 3000e8;
     uint256 private constant MAX_TVL = 200 * USDC_ONE;
 
     MockERC20 internal usdc;
@@ -86,8 +86,8 @@ contract PartyVaultTest is Test {
         _seed(100 * USDC_ONE);
 
         // First deposit into an empty vault mints assets * 10 ** offset shares.
-        assertEq(vault.totalShares(), 100 * USDC_ONE * 1_000);
-        assertEq(vault.sharesOf(owner), 100 * USDC_ONE * 1_000);
+        assertEq(vault.totalShares(), 100 * USDC_ONE * 1000);
+        assertEq(vault.sharesOf(owner), 100 * USDC_ONE * 1000);
         assertEq(vault.totalAssets(), 100 * USDC_ONE);
         assertTrue(vault.seeded());
         // Round trip is loss free at the seed point apart from the virtual-asset unit.
@@ -206,7 +206,7 @@ contract PartyVaultTest is Test {
     ) public {
         seed = bound(seed, USDC_ONE, 50 * USDC_ONE);
         attackerDeposit = bound(attackerDeposit, 1, 10 * USDC_ONE);
-        donation = bound(donation, 0, 1_000 * USDC_ONE);
+        donation = bound(donation, 0, 1000 * USDC_ONE);
         victimDeposit = bound(victimDeposit, USDC_ONE, 100 * USDC_ONE);
 
         vm.prank(owner);
@@ -289,9 +289,9 @@ contract PartyVaultTest is Test {
     function test_setMaxTvl_updatesCap() public {
         vm.prank(owner);
         vm.expectEmit(false, false, false, true, address(vault));
-        emit PartyVault.MaxTvlUpdated(1_000 * USDC_ONE);
-        vault.setMaxTvl(1_000 * USDC_ONE);
-        assertEq(vault.maxTvl(), 1_000 * USDC_ONE);
+        emit PartyVault.MaxTvlUpdated(1000 * USDC_ONE);
+        vault.setMaxTvl(1000 * USDC_ONE);
+        assertEq(vault.maxTvl(), 1000 * USDC_ONE);
     }
 
     // -------------------------------------------------------------------------------------------
@@ -330,9 +330,7 @@ contract PartyVaultTest is Test {
         assertGt(assets, vault.liquidUsdc());
 
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(PartyVault.InsufficientLiquidUsdc.selector, assets, 60 * USDC_ONE)
-        );
+        vm.expectRevert(abi.encodeWithSelector(PartyVault.InsufficientLiquidUsdc.selector, assets, 60 * USDC_ONE));
         vault.redeem(shares);
 
         // Redeeming only what the vault can actually pay still works: illiquid, never insolvent.
@@ -498,8 +496,7 @@ contract PartyVaultTest is Test {
         assertEq(vault.activeStrategies().length, 0);
         assertFalse(vault.isStrategyActive(production));
         assertFalse(vault.isStrategyActive(demo));
-        (uint248 productionBalance,) =
-            aqua.rawBalances(address(vault), address(router), production, address(usdc));
+        (uint248 productionBalance,) = aqua.rawBalances(address(vault), address(router), production, address(usdc));
         (uint248 demoBalance,) = aqua.rawBalances(address(vault), address(router), demo, address(usdc));
         assertEq(productionBalance, 0);
         assertEq(demoBalance, 0);
@@ -544,9 +541,7 @@ contract PartyVaultTest is Test {
         address[] memory tokens = _bandTokens();
         uint256[] memory amounts = _bandAmounts(10 * USDC_ONE);
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(MockAqua.StrategiesMustBeImmutable.selector, address(router), hash)
-        );
+        vm.expectRevert(abi.encodeWithSelector(MockAqua.StrategiesMustBeImmutable.selector, address(router), hash));
         vault.execShip(bytes("band-1"), tokens, amounts);
     }
 

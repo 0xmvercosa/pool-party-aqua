@@ -27,8 +27,8 @@ contract MockAqua is IAqua {
         uint8 tokensCount;
     }
 
-    mapping(address maker => mapping(address app => mapping(bytes32 hash => mapping(address token => Balance))))
-        private _balances;
+    mapping(address maker => mapping(address app => mapping(bytes32 hash => mapping(address token => Balance)))) private
+        _balances;
 
     error StrategiesMustBeImmutable(address app, bytes32 strategyHash);
     error DockingShouldCloseAllTokens(address app, bytes32 strategyHash);
