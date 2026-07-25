@@ -47,8 +47,8 @@ export MAX_TVL_USDC=300000000       # 300 USDC, 6 decimals. Deploy refuses anyth
 ## 1. Deploy (POO-1062 R1)
 
 ```bash
-forge script contracts/script/Deploy.s.sol:DeployActiveReserve \
-  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --verify --ledger
+cd contracts && forge script script/Deploy.s.sol:DeployActiveReserve \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --verify --account manager
 ```
 
 The script deploys `AaveV3Adapter` and then `PartyVault`. The two reference each other immutably, so
@@ -82,8 +82,8 @@ export VAULT_ADDRESS=0x...
 export SEED_USDC=200000000     # 200 USDC, within the D3 window band of 50 to 200
 export BUFFER_BPS=500          # keep 5 percent hot (D5), park the rest
 
-forge script contracts/script/Ops.s.sol:SeedAndPark \
-  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --ledger
+cd contracts && forge script script/Ops.s.sol:SeedAndPark \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager
 ```
 
 This approves, deposits, and parks in one signed run. Afterwards `Smoke` (section 5) must show a
@@ -101,13 +101,13 @@ vault that is 20 USDC total, for example 12 production plus 8 demo.
 ```bash
 export ORDER_BYTES=0x...       # production band, spot -15% to -5%
 export SHIP_USDC=12000000
-forge script contracts/script/Ops.s.sol:ShipBand \
-  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --ledger
+cd contracts && forge script script/Ops.s.sol:ShipBand \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager
 
 export ORDER_BYTES=0x...       # demo band, spot -0.3% to -0.1%, distinct salt
 export SHIP_USDC=8000000
-forge script contracts/script/Ops.s.sol:ShipBand \
-  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --ledger
+cd contracts && forge script script/Ops.s.sol:ShipBand \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager
 ```
 
 Record both `strategyHash` values and both ship tx hashes. The vault stores the shipped token list
@@ -119,7 +119,7 @@ Shipping moves no tokens. It is an accounting write in the Aqua registry, which 
 ## 4. Smoke test (POO-1062 R6)
 
 ```bash
-forge script contracts/script/Ops.s.sol:Smoke --rpc-url "$ARBITRUM_RPC_URL"
+cd contracts && forge script script/Ops.s.sol:Smoke --rpc-url "$ARBITRUM_RPC_URL"
 ```
 
 Read-only, safe to run at any time including mid-demo. Check:
@@ -137,7 +137,7 @@ Do not announce anything until both halves agree.
 A roll is `dock(old)` plus `ship(new)`. Two accounting writes, no token movement, no slippage.
 
 ```bash
-forge script contracts/script/Ops.s.sol:ShipBand ...   # after an execDock of the old hash
+cd contracts && forge script script/Ops.s.sol:ShipBand ...   # after an execDock of the old hash
 ```
 
 **The salt must change.** Aqua marks a docked hash with a permanent sentinel, so re-shipping the
@@ -158,8 +158,8 @@ clean hours) is out of the window per the amended D3.
 ## 7. Emergency stop
 
 ```bash
-forge script contracts/script/Ops.s.sol:EmergencyStop \
-  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --ledger
+cd contracts && forge script script/Ops.s.sol:EmergencyStop \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager
 ```
 
 `dockAll()` zeroes the virtual balance of every active strategy, then the Aqua allowances for USDC
