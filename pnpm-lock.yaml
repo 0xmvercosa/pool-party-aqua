@@ -11,6 +11,9 @@ importers:
       '@1inch/aqua-sdk':
         specifier: 0.2.0
         version: 0.2.0(typescript@5.9.3)
+      '@1inch/sdk-core':
+        specifier: 0.1.2
+        version: 0.1.2(typescript@5.9.3)
       '@1inch/swap-vm-sdk':
         specifier: 0.3.0
         version: 0.3.0(typescript@5.9.3)(viem@2.38.6(typescript@5.9.3))

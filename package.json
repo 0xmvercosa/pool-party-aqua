@@ -16,10 +16,14 @@
     "status": "tsx scripts/status.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "gate": "pnpm typecheck && pnpm test"
+    "gate": "pnpm typecheck && pnpm test",
+    "rehearse:traps": "tsx scripts/rehearse-traps.ts",
+    "rehearse:all": "pnpm rehearse && pnpm rehearse:traps",
+    "fixtures:build": "cd scripts/fixtures && forge build"
   },
   "dependencies": {
     "@1inch/aqua-sdk": "0.2.0",
+    "@1inch/sdk-core": "0.1.2",
     "@1inch/swap-vm-sdk": "0.3.0",
     "dotenv": "17.2.3",
     "viem": "2.38.6"
