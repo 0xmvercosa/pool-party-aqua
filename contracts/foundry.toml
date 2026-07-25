@@ -1,0 +1,36 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+libs = ["lib"]
+solc = "0.8.28"
+optimizer = true
+optimizer_runs = 1_000_000
+# Arbitrum One runs an ArbOS release with full Cancun support (the live Aqua
+# registry itself is compiled for it), so transient storage and MCOPY are safe.
+evm_version = "cancun"
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+[profile.default.fuzz]
+runs = 512
+max_test_rejects = 200_000
+
+[profile.ci.fuzz]
+runs = 2_000
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+quote_style = "double"
+number_underscore = "thousands"
+
+[rpc_endpoints]
+arbitrum = "${ARBITRUM_RPC_URL}"
+
+[etherscan]
+arbitrum = { key = "${ARBISCAN_API_KEY}", chain = 42161 }
