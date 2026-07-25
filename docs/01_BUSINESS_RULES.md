@@ -33,10 +33,10 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 - **ADP-R5** No admin or rescue functions in v1; replacement = new vault deployment.
 - Frozen interface: `park(address,uint256)`, `unpark(address,uint256)`, `parkedBalance(address) returns (uint256)`.
 
-## SRV: Server module + database ([POO-1071](https://linear.app/yeildbay/issue/POO-1071))
+## SRV: Server module + database ([POO-1071](https://linear.app/yeildbay/issue/POO-1071)) - **v2** (refined by Murilo 2026-07-25: internal API module + DB mirrors the real API)
 
-- **SRV-R1** All orchestration code (compiler, indexer/NAV, keeper logic, bot logic) lives in THIS repo as a server-only module: `src/lib/aqua/` (pure logic) + server actions in `src/features/strategies/operations/aquaActions.ts` and `src/features/manager/operations/aquaManagerActions.ts`. No separate backend service. `server-only` import guard on every module file.
-- **SRV-R2** Persistence in the existing Neon Postgres via Drizzle, behind the existing service-factory pattern. New tables (prefix `aqua_`): `aqua_mandates`, `aqua_ships` (strategyHash, program bytes, epoch, status), `aqua_fills`, `aqua_nav_snapshots`, `aqua_keeper_log`. Money columns follow the existing numeric-string convention (never JS float).
+- **SRV-R1 (v2)** Strict layering, three tiers, all inside this Next app: (1) thin **server actions** (input validation + session/auth only, zero business logic); (2) the **Aqua API module** (`src/lib/aqua/api/`, server-only), which plays the role of pool-party-api for this app: saves strategies/mandates to the database, orchestrates on-chain calls (sends keeper/bot txs with server-side keys; returns BuiltTx payloads for anything a wallet must sign), and hosts the domain services (compiler, indexer/NAV, keeper logic, bot logic); (3) infra clients (Drizzle, viem). The API module is the ONLY layer allowed to touch Drizzle or viem. No separate backend service exists.
+- **SRV-R2 (v2)** The database MIRRORS the pool-party-api domain model wherever domains overlap (strategies catalog, positions/holdings, activity events), so post-hackathon migration to the real API is a module swap, not a rewrite. Aqua-specific tables extend that mirrored core: `aqua_ships` (strategyHash, program bytes, epoch, status), `aqua_fills`, `aqua_nav_snapshots`, `aqua_keeper_log`. Drizzle migrations; money columns as numeric strings (never JS float).
 - **SRV-R3** Long-running processes (keeper loop, taker bot) execute the SAME server module via repo scripts (`pnpm aqua:keeper`, `pnpm aqua:taker`, tsx), not inside request handlers. A route handler + external cron is an accepted later alternative; Vercel cron is NOT assumed (real mode deploys to AWS dev).
 - **SRV-R4** Keeper key, bot key, and RPC URLs are server env only; never `NEXT_PUBLIC_*`; never imported client-side.
 - **SRV-R5** Anything a wallet signs (manager or investor) is returned by a server action as a `builtTxSchema`-validated payload consumed by `useWalletSignFlow`, matching the existing trust boundary.
@@ -109,7 +109,7 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 
 | # | Decision | PROPOSED default | Blocks |
 |---|---|---|---|
-| D1 | ~~Repo location~~ RESOLVED (Murilo 2026-07-25): ONE new dedicated repo for everything (contracts + Next app + scripts + docs). Pending details: name (proposal `pool-party-aqua`), org (proposal uBits-Capital), visibility (proposal public; needed by submission time + router copyleft) | Prepared locally at `~/Documents/pool-party-aqua`; GitHub creation after Murilo confirms | POO-1071 |
+| D1 | ~~Repo location~~ RESOLVED (Murilo 2026-07-25): ONE new dedicated repo `pool-party-aqua` on Murilo's personal GitHub account. Only VISIBILITY pending (proposal public; needed by submission time + router copyleft) | Prepared locally at `~/Documents/pool-party-aqua`; GitHub creation after visibility confirmed | POO-1071 |
 | D2 | ~~Backend during hackathon~~ RESOLVED (Murilo 2026-07-25): no backend service; Next server actions module + database (SRV rules) | n/a | n/a |
 | D10 | Postgres for the app: reuse the existing Neon project (new `aqua_*` tables) or a fresh Neon project/branch | Fresh Neon project/branch; hackathon state isolated | POO-1071 |
 | D3 | Launch capital + cap schedule | maxTvl $5k -> $20k after 48h clean; manager wallet = Murilo | POO-1062 |

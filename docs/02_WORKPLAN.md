@@ -10,10 +10,13 @@
 pool-party-aqua/
   contracts/            Foundry: PartyVault, AaveV3Adapter, PartyRouter, tests
   src/                  Next app (App Router)
-    lib/aqua/           server-only module: config, compiler, indexer, nav, keeper-logic, bot-logic
+    lib/aqua/api/       the internal API MODULE (plays pool-party-api's role): strategy persistence,
+                        on-chain orchestration, domain services (compiler, indexer, nav, keeper, bot).
+                        ONLY layer touching Drizzle/viem (SRV-R1 v2)
+    lib/aqua/config.ts  shared verified addresses (from POO-1058)
     app/                demo UI routes (investor page, manager page)
-    features/*/operations/  server actions (aquaActions, aquaManagerActions)
-    db/                 Drizzle schema + migrations (aqua_* tables)
+    features/*/operations/  THIN server actions delegating to lib/aqua/api (no business logic)
+    db/                 Drizzle schema + migrations: API-mirror core tables + aqua_* extensions (SRV-R2 v2)
   scripts/              tsx entrypoints: rehearse, ship, roll, dock, status, aqua:keeper, aqua:taker
   docs/                 THIS folder: 00/01/02, VERIFIED.md, RUNBOOK.md, FILLS.md
 ```
