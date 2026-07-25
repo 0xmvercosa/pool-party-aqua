@@ -33,4 +33,4 @@ number_underscore = "thousands"
 arbitrum = "${ARBITRUM_RPC_URL}"
 
 [etherscan]
-arbitrum = { key = "${ARBISCAN_API_KEY}", chain = 42161 }
+arbitrum = { key = "${ARBISCAN_API_KEY}", chain = 42161, url = "https://api.etherscan.io/v2/api" }

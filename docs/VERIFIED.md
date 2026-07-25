@@ -109,7 +109,7 @@ Measured JIT trace (trap A): vault wallet held 100 USDC, adapter held 1900, the 
 - [x] **Are the gen-2 makers EOAs? YES.** Four ships, two distinct makers (`0x410326e6...`, `0x6edc317f...`), both with zero code. No pooled-custody Aqua maker exists yet; the demo claim holds.
 - [x] **Rehearsal (fork): approve -> ship -> quote -> swap -> dock all GREEN.** `pnpm rehearse`, 28 checks. Fork tx hashes are per-run (Anvil), so the reproducible artifact is the script, not a hash list.
 - [x] **Hook firing (`preTransferOut`) with a stub maker on the fork: PASS**, including a fill 8.6x larger than the hot buffer settling in one transaction. `pnpm rehearse:traps`, trap A.
-- [ ] Mainnet: adapter address, vault address, ship txs, strategyHashes (production band + demo band)
+- [x] **Mainnet DEPLOYED + VERIFIED (2026-07-25)**: AaveV3Adapter `0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe`, PartyVault `0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610`, owner `0xc365B6795443380eb76516dA0Cedd5a00B349d66`, maxTvl 200 USDC. Deploy txs in RUNBOOK section 10. Ship txs + strategyHashes: pending (next step)
 
 ## Traps demonstrated on-chain (POO-1058, `pnpm rehearse:traps`)
 

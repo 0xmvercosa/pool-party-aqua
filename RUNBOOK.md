@@ -215,11 +215,11 @@ Filled in during the live run.
 
 | Item | Value |
 |---|---|
-| AaveV3Adapter | |
-| PartyVault | |
-| Deploy txs | |
-| Arbiscan verification | |
-| maxTvl at launch | |
+| AaveV3Adapter | `0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe` |
+| PartyVault | `0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610` |
+| Deploy txs | adapter `0x3b2b729700b60f14d1b340382d2ade637161662656d933419b26647068a855ae` (block 487662396), vault `0x5b77b43198e12e0917a99d73c6238ee16b9531a429769b803daf53faf528263a` (block 487662407), total 0.0000686 ETH |
+| Arbiscan verification | both Pass - Verified via Etherscan API V2 (2026-07-25) |
+| maxTvl at launch | 200 USDC (seed 10 USDC per re-amended D3) |
 | Seed tx / amount | |
 | Park tx / amount | |
 | Production band strategyHash / ship tx | |
