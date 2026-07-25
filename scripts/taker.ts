@@ -8,10 +8,11 @@
  * The bot wallet is separate from the manager and keeper keys and holds only its own working
  * capital (BOT-R4). It never touches vault funds.
  *
- * Usage:
- *   pnpm taker --strategy 0x... --size 0.01 --dry-run
- *   pnpm taker --strategy 0x... --size 0.01 --network mainnet
- *   pnpm taker --strategy 0x... --size 0.5  --network fork      (forces the JIT path)
+ * Usage (DRY-RUN IS THE DEFAULT; nothing is sent without --execute):
+ *   pnpm taker --strategy 0x... --size 0.01                      (quote only)
+ *   pnpm taker --strategy 0x... --size 0.01 --network mainnet --execute
+ *   pnpm taker --strategy 0x... --size 0.5  --network fork --execute   (forces the JIT path)
+ *   Optional: --slippage-bps 50 (bind the quote on-chain via TakerTraits threshold)
  */
 import { relative } from "node:path";
 import { Address, Order, SwapVMContract, TakerTraits } from "@1inch/swap-vm-sdk";
@@ -30,12 +31,16 @@ import { AQUA_SWAP_VM_ROUTER, DECIMALS, TOKENS } from "./lib/addresses.ts";
 import { anvilArbitrumFork } from "./lib/clients.ts";
 import { arbitrumRpcUrl, forkRpcUrl } from "./lib/env.ts";
 import { TOPICS, parsePulled, parsePushed, parseSwapped, topicOf } from "./lib/events.ts";
-import { appendFill, appendStrategyNote, fillsPathFor } from "./lib/fills.ts";
+import { appendFill, appendStrategyNote, fillsPathFor, sumMainnetFillsToday } from "./lib/fills.ts";
 import { formatUnits, heading, info } from "./lib/format.ts";
 import { reconstructFromChain } from "./lib/reconstruct.ts";
 
 /** BOT-R3: hard caps. A bug in size handling must not become a large mainnet trade. */
 const MAX_FILL_WETH = parseEther("1");
+/** BOT-R3: daily cumulative cap across all mainnet fills, summed from docs/FILLS.md. */
+const MAX_DAILY_WETH = parseEther("3");
+/** Default slippage bound between the dry-run quote and on-chain execution. */
+const DEFAULT_SLIPPAGE_BPS = 50n;
 
 type Args = Record<string, string | boolean>;
 
@@ -99,12 +104,24 @@ async function main(): Promise<void> {
   if (!strategyHash) throw new Error("Missing --strategy <strategyHash>");
 
   const network = args.network === "mainnet" ? "mainnet" : "fork";
-  const dryRun = args["dry-run"] === true;
+  // Dry-run is the DEFAULT: a taker invocation with no flags must never trade (review fix).
+  const execute = args.execute === true;
+  const dryRun = !execute;
+  const slippageBps = typeof args["slippage-bps"] === "string" ? BigInt(args["slippage-bps"]) : DEFAULT_SLIPPAGE_BPS;
   const mandateLabel = typeof args.mandate === "string" ? args.mandate : "unlabelled";
   const size = parseEther(String(args.size ?? "0.01"));
 
   if (size > MAX_FILL_WETH) {
     throw new Error(`BOT-R3: --size ${formatUnits(size, 18)} WETH exceeds the ${formatUnits(MAX_FILL_WETH, 18)} cap`);
+  }
+  if (network === "mainnet" && execute) {
+    const already = sumMainnetFillsToday();
+    if (already + size > MAX_DAILY_WETH) {
+      throw new Error(
+        `BOT-R3: today's mainnet fills total ${formatUnits(already, 18)} WETH; ` +
+          `adding ${formatUnits(size, 18)} would exceed the ${formatUnits(MAX_DAILY_WETH, 18)} daily cap`,
+      );
+    }
   }
 
   const chain = network === "mainnet" ? arbitrum : anvilArbitrumFork;
@@ -134,7 +151,7 @@ async function main(): Promise<void> {
   }
 
   if (dryRun) {
-    console.log("\n[dry-run] no transaction sent.");
+    console.log("\n[dry-run] no transaction sent. Pass --execute to fill for real.");
     return;
   }
 
@@ -175,12 +192,17 @@ async function main(): Promise<void> {
     info(`approve ${approveTx}`);
   }
 
+  // Bind the dry-run quote on-chain: threshold = quoted out minus the slippage allowance.
+  // TakerTraits enforces it in the router (trap C already showed TakerTraits reverts), so a
+  // quote that moves between step 2 and execution cannot fill below the bound (review fix).
+  const minOut = (q.amountOut * (10_000n - slippageBps)) / 10_000n;
+  info(`min out bound ${formatUnits(minOut, DECIMALS.USDC)} USDC (quote - ${slippageBps} bps)`);
   const swapData = SwapVMContract.encodeSwapCallData({
     order: strategy.order,
     tokenIn: new Address(TOKENS.WETH),
     tokenOut: new Address(TOKENS.USDC),
     amount: size,
-    takerTraits: TakerTraits.default(),
+    takerTraits: TakerTraits.default().with({ threshold: minOut }),
   });
   const swapTx = await wallet.sendTransaction({
     to: AQUA_SWAP_VM_ROUTER,

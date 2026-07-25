@@ -5,14 +5,17 @@
  * shapes this file: money is always read fresh from chain, never from a cache and never from
  * our own database. If a number here is wrong, it is wrong on Arbitrum too.
  *
- * Attribution (IDX-R4):
- *   carry   = aToken balance growth, the external yield that accrues every block
- *   fills   = per-fill (value received - value paid) marked at Chainlink at fill time
- *   premium = the flat-fee share of each fill, the maker's spread
+ * Attribution (IDX-R4, window scope):
+ *   carry = parkedBalance minus net principal parked, reconstructed from the USDC Transfer
+ *           legs between vault and adapter. This is the external Aave yield, as a number.
+ *   fills = WETH accumulated vs USDC paid, marked at the CURRENT Chainlink spot (not at
+ *           fill-time price; per-fill historical marking is a post-window refinement).
+ *   The 80 bps premium is embedded in the discount-vs-spot line, not printed separately.
  *
  * Usage:
  *   pnpm status --vault 0x... [--adapter 0x...] [--strategy 0x... --strategy 0x...]
  *   pnpm status --vault 0x... --network fork
+ *   (--adapter is optional: when omitted it is read from vault.ADAPTER())
  */
 import { http, type PublicClient, createPublicClient, erc20Abi } from "viem";
 import { arbitrum } from "viem/chains";
@@ -97,6 +100,11 @@ const PARKED_BALANCE_ABI = [
   },
 ] as const;
 
+const VAULT_VIEW_ABI = [
+  { type: "function", name: "ADAPTER", inputs: [], outputs: [{ type: "address" }], stateMutability: "view" },
+  { type: "function", name: "totalAssets", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
+] as const;
+
 const usd = (e8: bigint) => (Number(e8) / 1e8).toFixed(2);
 
 /** USDC value of a WETH amount at a given Chainlink price, all in raw units. */
@@ -149,11 +157,26 @@ async function main(): Promise<void> {
     args: [vault],
   });
 
+  // --adapter is optional: the vault knows its adapter (immutable getter), so NAV must not
+  // silently understate when the flag is omitted (review fix, IDX-R3).
+  let adapterAddr = adapter;
+  if (!adapterAddr) {
+    try {
+      adapterAddr = await client.readContract({
+        address: vault,
+        abi: VAULT_VIEW_ABI,
+        functionName: "ADAPTER",
+      });
+      info(`adapter ${adapterAddr} (read from vault.ADAPTER())`);
+    } catch {
+      info("(no --adapter and vault.ADAPTER() unavailable; parked leg will read 0)");
+    }
+  }
   let parked = BigInt(0);
-  if (adapter) {
+  if (adapterAddr) {
     try {
       parked = await client.readContract({
-        address: adapter,
+        address: adapterAddr,
         abi: PARKED_BALANCE_ABI,
         functionName: "parkedBalance",
         args: [TOKENS.USDC],
@@ -164,7 +187,7 @@ async function main(): Promise<void> {
         address: AAVE_A_USDC,
         abi: erc20Abi,
         functionName: "balanceOf",
-        args: [adapter],
+        args: [adapterAddr],
       });
       info("(adapter has no parkedBalance(); read the aUSDC balance instead)");
     }
@@ -211,6 +234,22 @@ async function main(): Promise<void> {
   info(`parked (Aave)      ${formatUnits(parked, DECIMALS.USDC)}`);
   info(`WETH at Chainlink  ${formatUnits(wethAsUsdc, DECIMALS.USDC)}  (${formatUnits(vaultWeth, DECIMALS.WETH)} WETH @ $${usd(priceE8)})`);
   info(`NAV                ${formatUnits(nav, DECIMALS.USDC)} USDC`);
+  // Cross-check the reconstruction against the vault's own view (IDX-R3): any divergence
+  // beyond rounding means this script or the vault is wrong, and both claim VLT-R4.
+  try {
+    const onchainNav = await client.readContract({
+      address: vault,
+      abi: VAULT_VIEW_ABI,
+      functionName: "totalAssets",
+    });
+    const diff = onchainNav > nav ? onchainNav - nav : nav - onchainNav;
+    info(`vault.totalAssets  ${formatUnits(onchainNav, DECIMALS.USDC)} USDC (on-chain cross-check, diff ${formatUnits(diff, DECIMALS.USDC)})`);
+    if (diff > BigInt(1_000_000)) {
+      info("WARNING: reconstruction diverges from vault.totalAssets by more than 1 USDC");
+    }
+  } catch {
+    info("(vault.totalAssets() unavailable; cross-check skipped)");
+  }
   info(
     `committed to strategies ${formatUnits(committedUsdc, DECIMALS.USDC)} USDC ` +
       `(quoted depth, not a separate asset: ship() moves nothing)`,
@@ -271,9 +310,57 @@ async function main(): Promise<void> {
     info("  (this is the dip-buying leg: ETH accumulated below market)");
   }
 
+  // ---- carry, as a number -------------------------------------------------
+  // Net principal parked = USDC transferred vault->adapter minus adapter->vault, from the
+  // token's own Transfer logs. parkedBalance is interest-inclusive, so the difference IS the
+  // Aave carry earned in the scanned window's history (review fix: compute it, not prose).
+  heading("Carry (external yield, computed)");
+  if (adapterAddr) {
+    let principalIn = BigInt(0);
+    let principalOut = BigInt(0);
+    let t = head;
+    while (t > floor) {
+      const from = t > floor + chunk ? t - chunk : floor;
+      const inLogs = await client.getLogs({
+        address: TOKENS.USDC,
+        event: { type: "event", name: "Transfer", inputs: [
+          { name: "from", type: "address", indexed: true },
+          { name: "to", type: "address", indexed: true },
+          { name: "value", type: "uint256", indexed: false },
+        ] },
+        args: { from: vault, to: adapterAddr },
+        fromBlock: from,
+        toBlock: t,
+      });
+      const outLogs = await client.getLogs({
+        address: TOKENS.USDC,
+        event: { type: "event", name: "Transfer", inputs: [
+          { name: "from", type: "address", indexed: true },
+          { name: "to", type: "address", indexed: true },
+          { name: "value", type: "uint256", indexed: false },
+        ] },
+        args: { from: adapterAddr, to: vault },
+        fromBlock: from,
+        toBlock: t,
+      });
+      for (const l of inLogs) principalIn += l.args.value ?? BigInt(0);
+      for (const l of outLogs) principalOut += l.args.value ?? BigInt(0);
+      if (from === floor) break;
+      t = from - BigInt(1);
+    }
+    const principalNet = principalIn - principalOut;
+    const carry = parked - principalNet;
+    info(`principal parked (net)   ${formatUnits(principalNet, DECIMALS.USDC)} USDC`);
+    info(`parked balance now       ${formatUnits(parked, DECIMALS.USDC)} USDC`);
+    info(`carry earned             ${carry >= BigInt(0) ? "+" : ""}${formatUnits(carry, DECIMALS.USDC)} USDC (Aave interest, accrues every block)`);
+    info("  (assumes the park/unpark history is inside the scanned window; widen --search-blocks otherwise)");
+  } else {
+    info("(no adapter known; carry cannot be computed)");
+  }
+
   info("");
-  info("carry leg: the parked USDC above is in Aave and accrues every block. It is the only");
-  info("EXTERNAL yield in the window; the fills above are self-directed settlement proofs.");
+  info("The carry above is the only EXTERNAL yield in the window; the fills are self-directed");
+  info("settlement proofs.");
 }
 
 main().catch((error) => {

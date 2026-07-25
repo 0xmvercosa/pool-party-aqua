@@ -16,13 +16,28 @@ import { AquaProtocolContract } from "@1inch/aqua-sdk";
 import { Interaction } from "@1inch/sdk-core";
 import { Address, AquaProgramBuilder, HexString, MakerTraits, Order } from "@1inch/swap-vm-sdk";
 import { erc20Abi, keccak256, parseEther, parseUnits } from "viem";
-import stubAdapterArtifact from "./fixtures/out/StubMaker.sol/StubAdapter.json" with { type: "json" };
-import stubMakerArtifact from "./fixtures/out/StubMaker.sol/StubMaker.json" with { type: "json" };
+import { existsSync, readFileSync } from "node:fs";
+import type { Abi } from "viem";
 import { AQUA_REGISTRY, AQUA_SWAP_VM_ROUTER, CHAINLINK_ETH_USD, DECIMALS, TOKENS } from "./lib/addresses.ts";
 import { bandFromSpot, concentrateArgsFor } from "./lib/band.ts";
-import { fund, makerAccount, takerAccount, testClient, transferFromWhale, walletFor } from "./lib/fork.ts";
+import { TAKER_KEY, fund, makerAccount, takerAccount, testClient, transferFromWhale, walletFor } from "./lib/fork.ts";
 import { fail, formatUnits, heading, info, pass } from "./lib/format.ts";
 import { reconstructFromChain } from "./lib/reconstruct.ts";
+
+
+// Forge build output is gitignored; load at runtime so typecheck stays green on a clean
+// checkout and the missing-prereq failure is a clear message (same pattern as rehearse-traps).
+type ForgeArtifact = { abi: Abi; bytecode: { object: `0x${string}` } };
+function loadFixture(name: string): ForgeArtifact {
+  const path = resolvePath(fileURLToPath(import.meta.url), "..", "fixtures", "out", "StubMaker.sol", `${name}.json`);
+  if (!existsSync(path)) {
+    console.error(`Missing fixture artifact ${path}. Run: pnpm fixtures:build`);
+    process.exit(1);
+  }
+  return JSON.parse(readFileSync(path, "utf8")) as ForgeArtifact;
+}
+const stubMakerArtifact = loadFixture("StubMaker");
+const stubAdapterArtifact = loadFixture("StubAdapter");
 
 const test = testClient();
 const makerWallet = walletFor(makerAccount);
@@ -229,6 +244,7 @@ async function runTaker(
         "fork",
         "--mandate",
         "demo",
+        "--execute",
       ],
       {
         cwd: resolvePath(fileURLToPath(import.meta.url), "../.."),
@@ -236,8 +252,7 @@ async function runTaker(
         env: {
           ...process.env,
           // Anvil's second dev account, the same taker the rest of the rehearsal funds.
-          TAKER_BOT_PRIVATE_KEY:
-            "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+          TAKER_BOT_PRIVATE_KEY: TAKER_KEY,
         },
       },
     );
