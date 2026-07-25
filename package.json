@@ -1,0 +1,33 @@
+{
+  "name": "pool-party-aqua",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Active Reserve: on-chain side of the Pool Party x 1inch Aqua hackathon build (Arbitrum)",
+  "license": "MIT",
+  "packageManager": "pnpm@11.5.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "rehearse": "tsx scripts/rehearse.ts",
+    "verify:onchain": "tsx scripts/verify-onchain.ts",
+    "taker": "tsx scripts/taker.ts",
+    "status": "tsx scripts/status.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "gate": "pnpm typecheck && pnpm test"
+  },
+  "dependencies": {
+    "@1inch/aqua-sdk": "0.2.0",
+    "@1inch/swap-vm-sdk": "0.3.0",
+    "dotenv": "17.2.3",
+    "viem": "2.38.6"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.13",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}
