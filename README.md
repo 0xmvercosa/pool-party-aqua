@@ -62,7 +62,7 @@ accruing is external and real today.
 
 ## Hackathon qualification
 
-1. Official Aqua + official AquaSwapVMRouter used unmodified for the core product; PartyRouter is the explicitly-allowed modified SwapVM redeploy (one instruction wired: OraclePriceAdjuster).
+1. Official Aqua + official AquaSwapVMRouter used unmodified for the core product. PartyRouter, the explicitly-allowed modified SwapVM redeploy that would wire the OraclePriceAdjuster instruction, is designed and specified but was cut from the 20-hour window; see the table above.
 2. On-chain token transfers demonstrated with real fills on Arbitrum mainnet (see `docs/FILLS.md` when populated).
 3. Phased commit history, PR per Linear issue.
 
@@ -72,4 +72,4 @@ Per the hackathon continuity rule: everything in THIS repository was created dur
 
 ## Licensing and security
 
-1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). The modified router's source is published here per the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution required by the upstream license: "Aqua — © Degensoft Ltd 2025". No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
+1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). No upstream source is vendored into this repository: our contracts restate only the ABI shapes they call, and each such file cites the upstream tag it was transcribed from (`aqua` v1.0.0, `swap-vm` v1.0.1). Should PartyRouter ship after the window, its source is published under the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution required by the upstream license: "© 2025 Degensoft Ltd" (Aqua, SwapVM). No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
