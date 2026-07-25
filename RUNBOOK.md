@@ -177,6 +177,35 @@ utilization stress, or anything upstream behaves unexpectedly. During the window
 plus `dockAll` **is** the price sentinel, because the keeper loop (POO-1069) and the oracle-guarded
 router (POO-1063) are consciously cut.
 
+## 7b. Selling the accumulated inventory back (close-out)
+
+Redemption pays USDC only (VLT-R5) and the vault has no swap function, so WETH bought by the
+band leaves the same way it arrived: through a fill, in reverse. The taker pays USDC and
+receives WETH, at band-plus-fee pricing that favours the maker on the way out as well.
+
+**One step is easy to miss and it cost us a revert on mainnet.** `_ensureAquaAllowance` only
+tops the Aqua allowance up for what a ship actually commits, and a buy band ships WETH at
+amount 0, so **the vault has no WETH allowance to Aqua at all**. Aqua's `pull` is a
+`safeTransferFrom` from the vault, so the reverse fill reverts with no reason string until the
+owner grants it. That is correct behaviour for a one-directional band, not a bug, but the exit
+needs one deliberate transaction first:
+
+```bash
+cast send "$VAULT_ADDRESS" "revokeAquaApproval(address,uint256)" \
+  0x82aF49447D8a07e3bd95BD0d56f35241523fBab1 <WETH_BALANCE_WEI> \
+  --rpc-url "$ARBITRUM_RPC_URL" --account manager
+```
+
+`revokeAquaApproval` is a general allowance setter despite its name (zero revokes, any other
+value grants). Approve exactly the WETH balance, never more. Then run the reverse fills:
+
+```bash
+pnpm tsx scripts/unwind.ts --strategy <HASH> --usdc-in 0.55 --network mainnet --execute
+```
+
+Do this BEFORE the emergency stop: the stop revokes both allowances and docks the strategies,
+which closes the only route the inventory has out.
+
 ## 8. The "temporarily illiquid" state, explained honestly
 
 Redemption pays USDC only. The vault can pay out whatever sits in the hot buffer plus whatever the
