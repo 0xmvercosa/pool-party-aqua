@@ -29,6 +29,42 @@ Each router's `AQUA()` getter points at its own registry (pairs are fixed).
 6. Aqua mode enforces `receiver == maker` (the vault receives directly) and forbids WETH unwrap.
 7. Chainlink ETH/USD on Arbitrum: `0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612` (8 decimals). Measured over 24h: 360 updates, median gap 121s, max 29.5 min. The 90-min staleness bound (D9) has zero false-trip margin risk.
 
+## Upstream call shapes, read from pinned source (Track A, POO-1059/POO-1060)
+
+Upstream is public and fetchable without auth, so nothing below is guesswork and nothing is
+vendored into this repo (Degensoft licenses):
+
+```bash
+curl -sL -o swapvm.tgz https://codeload.github.com/1inch/swap-vm/tar.gz/refs/tags/v1.0.1
+curl -sL -o aqua.tgz   https://codeload.github.com/1inch/aqua/tar.gz/refs/tags/v1.0.0
+```
+
+| Call | Signature | Consequence |
+|---|---|---|
+| `Aqua.ship` | `ship(address app, bytes strategy, address[] tokens, uint256[] amounts) returns (bytes32)` | selector `0xf50b870f`, cross-checked against live ship tx `0xa966fc93...`. Returns `keccak256(strategy)`. Confirms PRG-R9 |
+| `Aqua.dock` | `dock(address app, bytes32 strategyHash, address[] tokens)` | reverts `DockingShouldCloseAllTokens` unless `tokens` covers EVERY token the ship registered, so the vault stores the shipped list per hash |
+| `Aqua.pull` | `pull(address maker, bytes32 hash, address token, uint256 amount, address to)` | executes `safeTransferFrom(maker, to, amount)`: the maker approves the **registry**, never the router |
+| `Aqua.ship` immutability | requires `tokensCount == 0` per token; dock writes the `0xff` sentinel | a docked hash is dead forever. Hard-confirms PRG-R10: every roll MUST change the salt |
+| maker hook | `IMakerHooks.preTransferOut(address maker, address taker, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, bytes32 orderHash, bytes makerData, bytes takerData)` | FIXED upstream interface, not a payload we choose. Called by the ROUTER on the maker in `SwapVM._transferOut` immediately before `AQUA.pull`, carrying the settled `amountOut`, so exact-amount JIT works. Supersedes the `onPreTransferOut(token, amount)` shape in the older frozen list |
+
+## Aave v3 on Arbitrum (verified on chain 2026-07-25, POO-1060)
+
+| What | Address | How it was verified |
+|---|---|---|
+| Aave v3 Pool | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` | matches the aToken's own `POOL()` getter |
+| aArbUSDCn | `0x724dc807b04555b71ed48a6896b6F41593b8C637` | `UNDERLYING_ASSET_ADDRESS()` returns native USDC, `symbol()` is `aArbUSDCn`, 6 decimals |
+| USDC (native) | `0xaf88d065e77c8cC2239327C5EDb3A432268e5831` | `symbol()` is `USDC` |
+| WETH | `0x82aF49447D8a07e3bd95BD0d56f35241523fBab1` | used as the second registered token |
+
+`AaveV3Adapter` re-runs the aToken checks in its constructor, so a mis-wired pair cannot deploy.
+
+Measured on an Arbitrum fork of live state (POO-1060 suite):
+
+- JIT overhead per fill: **26,128 gas** (92,494 with the Aave withdraw inside the fill versus 66,366
+  when the hot buffer covers it). Cents at Arbitrum gas prices, far below the 80 bps premium on any
+  fill worth doing.
+- aUSDC carry over 90 warped days on 100k USDC: **263 bps implied APR**.
+
 ## Fill in during POO-1058 / POO-1062
 
 - [ ] Rehearsal tx hashes (fork): approve, ship, quote, swap, dock
