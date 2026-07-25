@@ -74,8 +74,9 @@ function ensureHeader(path: string, network: "mainnet" | "fork"): void {
 function countRows(path: string): number {
   if (!existsSync(path)) return 0;
   const body = readFileSync(path, "utf8");
-  // Data rows start with "| " followed by a digit; the header and separator do not.
-  return body.split("\n").filter((line) => /^\|\s*\d+\s*\|/.test(line)).length;
+  // A fill row is "| N | YYYY-MM-DD ..."; the narrative log-decode tables also start with
+  // "| N |" but never carry a date in the second cell, so anchor on it.
+  return body.split("\n").filter((line) => /^\|\s*\d+\s*\|\s*\d{4}-\d{2}-\d{2}/.test(line)).length;
 }
 
 export function appendFill(record: FillRecord): number {

@@ -50,3 +50,7 @@ VLT-R9 behaving as designed. Until the instant that transaction executed, every 
 
 That is the claim in one line: **capital earns yield until the exact second it buys the dip.**
 Not a design intention, a decoded mainnet transaction.
+| 2 | 2026-07-25 19:42:20 | demo `0x77097fd3...` | 0.00002 WETH | 0.037055 USDC | $1852.75 | yes | [0x94068a6b...](https://arbiscan.io/tx/0x94068a6b87198ba8190830542cf91bcfab6800be6f33efac8ac6012b8f9e7a2d) |
+
+<!-- strategy: unlabelled 0xafbd59da3040256990b3584b56930acd0befc0ee1ccbfa7bc87b0c7496818260 on mainnet -->
+| 3 | 2026-07-25 19:43:19 | production `0xafbd59da...` | 0.00002 WETH | 0.035137 USDC | $1756.85 | yes | [0x22275ab5...](https://arbiscan.io/tx/0x22275ab56618064191e0bbcff058389722a3a1c9d54b14a89c5c0e10316a89f1) |
