@@ -2,10 +2,10 @@
 
 **Date:** 2026-07-25
 **Audience:** the whole hackathon team (humans and agent sessions). Share freely.
-**Status:** all decisions resolved (D1-D10). Execution can start immediately.
+**Status:** all decisions resolved (D1-D10) + Rafael's source/on-chain review (2026-07-25) incorporated with Murilo's rulings: frontend IS in the submission (structure v3 stands, with explicit continuity documentation for the judges), Neon mirror KEPT (D10 stands), repo PUBLIC from now. Canonical addresses + pinned source: `docs/VERIFIED.md` (READ IT FIRST: gen-2 addresses, v1.0.1-era opcode table, fee-direction trap).
 **Deadline (D7 UPDATED 2026-07-25): 20 HOURS from kickoff.** The schedule in section 6 is a wall-clock wave plan for parallel sessions; the scope cuts in section 6.1 are in force and override any wider scope stated in the issues.
 **Linear:** project [Aqua Strategies (1inch Hackathon)](https://linear.app/yeildbay/project/aqua-strategies-1inch-hackathon-bfbf16b06ef7) - epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057)
-**Repos:** on-chain side [github.com/0xmvercosa/pool-party-aqua](https://github.com/0xmvercosa/pool-party-aqua) (private now, PUBLIC at submission) - app side `pool-party-frontend`, branch `feat/aqua-poo-1057-hackathon`
+**Repos:** on-chain side [github.com/0xmvercosa/pool-party-aqua](https://github.com/0xmvercosa/pool-party-aqua) (**PUBLIC since 2026-07-25**) - app side `pool-party-frontend`, branch `feat/aqua-poo-1057-hackathon`
 **Companion docs (read before picking up any issue):** [00_ARCHITECTURE_AND_PLAN.md](./00_ARCHITECTURE_AND_PLAN.md) (architecture; read the Addenda block first), [01_BUSINESS_RULES.md](./01_BUSINESS_RULES.md) (numbered rules, single source of truth), [02_WORKPLAN.md](./02_WORKPLAN.md) (coordination protocol, frozen interfaces)
 
 ---
@@ -16,7 +16,7 @@
 
 > An always-earning reserve that buys the dip. Capital earns Aave lending yield every block and is deployed automatically the instant the market dips into the manager's buy band, purchasing ETH below market price. Objective: accumulate ETH at a discount while never sitting idle.
 
-Mechanically: a ~200-line vault (the Aqua **maker**) holds pooled USDC. ~90% is supplied to Aave v3; ~10% backs a SwapVM program (official 1inch contracts, Aqua mode) quoting a buy band below spot. On a fill, a maker hook withdraws the exact USDC from Aave **inside the settlement transaction**, Aqua transfers it to the taker, and the purchased WETH lands back in the vault. Pool Party's protocol fee is pulled on-chain on every fill by a SwapVM fee opcode. Investors hold internal-ledger shares (no ERC-20 token); the manager creates and operates the strategy within platform guardrails compiled into the program by our own code.
+Mechanically: a ~200-line vault (the Aqua **maker**) holds pooled USDC. ~90% is supplied to Aave v3; ~10% backs a SwapVM program (official 1inch contracts, Aqua mode) quoting a buy band below spot. On a fill, a maker hook withdraws the exact USDC from Aave **inside the settlement transaction**, Aqua transfers it to the taker, and the purchased WETH lands back in the vault. The 80 bps dip premium is enforced in-program on every fill; the on-chain protocol-fee opcode is a documented next step (fee-direction trap, see VERIFIED.md). Investors hold internal-ledger shares (no ERC-20 token); the manager creates and operates the strategy within platform guardrails compiled into the program by our own code.
 
 Why judges should care: real production deployment on Arbitrum mainnet (not a fork), a genuine lending+market-making composition impossible on Uniswap v3, heavy SwapVM usage, and a modified SwapVM router (the explicitly-allowed scoring axis).
 
@@ -24,13 +24,13 @@ Why judges should care: real production deployment on Arbitrum mainnet (not a fo
 
 | # | Decision |
 |---|---|
-| D1 | One dedicated on-chain repo `pool-party-aqua` on `0xmvercosa` (private now, **flip to public at submission**, checklist in [POO-1070](https://linear.app/yeildbay/issue/POO-1070)) + frontend/app work in `pool-party-frontend` branch `feat/aqua-poo-1057-hackathon` |
+| D1 | On-chain repo `pool-party-aqua` on `0xmvercosa`, **PUBLIC since day 0** (Murilo, post-review). Frontend/app work in `pool-party-v2-frontend` branch `feat/aqua-poo-1057-hackathon`, **part of the submission** with explicit continuity documentation (README) |
 | D2 | No separate backend. Next server-actions module + internal API module + Postgres (SRV rules v3) |
-| D3 | Guarded launch: maxTvl **$5k**, raise to **$20k after 48h clean**; manager wallet = Murilo; our own capital only |
-| D4 | Fees: protocol **5 bps per fill** (on-chain opcode), dip premium **80 bps** flat fee, performance **20% HWM**, lockup **0 days** |
+| D3 | 20h window: seed **$50-200** own capital, maxTvl accordingly; **$5k -> $20k after 48h clean is the POST-event schedule**; manager wallet = Murilo |
+| D4 | Fees AMENDED per review: v1 program carries the **80 bps flat fee only** (the tokenIn protocol-fee opcode reverts on a buy band, PRG-R7 v2; tokenOut variant checked in rehearsal). Performance 20% HWM + lockup DEFERRED with the vault window cut; platform economics documented, not charged in-window |
 | D5 | Mandate defaults: band **spot-15% to spot-5%**, epoch **3 days**, TVL-drift re-ship 10%, hot buffer 5% of USDC sleeve, coverage 1.0 (no over-commit in v1) |
 | D6 | Frontend built on the separate branch during the event; merge to `main` post-hackathon |
-| D7 | Demo **this week**; compressed priority ladder (section 6) |
+| D7 | Demo in **20 hours**; wave plan + cuts (section 6) |
 | D8 | Product name **Active Reserve** + official 277-char description (FE-R10) |
 | D9 | Oracle guard: maxPriceDecay **50 bps**, maxStaleness **90 min** (Chainlink ETH/USD, Arbitrum) |
 | D10 | Database: **Neon mirror of prod** (created by Murilo). Credential ONLY in local `.env` files, never committed, rotate after the event, never commit mirror data |
@@ -42,7 +42,7 @@ Why judges should care: real production deployment on Arbitrum mainnet (not a fo
 - **`pool-party-aqua`** (this repo): `contracts/` Foundry (PartyVault, AaveV3Adapter, PartyRouter), deploy + fork-rehearsal scripts, canonical docs, submission artifacts (`VERIFIED.md`, `RUNBOOK.md`, `FILLS.md`).
 - **`pool-party-frontend` @ `feat/aqua-poo-1057-hackathon`**: investor/manager surfaces AND the whole server side: thin server actions delegating to the **internal API module** `src/lib/aqua/api/` (plays pool-party-api's role: strategy persistence + on-chain orchestration + domain services: compiler, indexer/NAV, keeper logic, bot logic), Drizzle over the Neon prod mirror extended with `aqua_*` tables, and `scripts/aqua/` entrypoints (`pnpm aqua:keeper`, `pnpm aqua:taker`).
 
-**On-chain flow (the demo money shot):** taker calls `swap()` on the router; the program runs `[deadline][AquaProtocolFeeAmountIn][flatFee][concentrate][salt]`; the `preTransferOut` maker hook fires, the vault unparks exact USDC from Aave (aUSDC burn); Aqua `pull` transfers USDC vault->taker; taker's WETH is `push`ed back to the vault and auto-compounds into the strategy's virtual balance. One transaction: Aave withdrawal + both real ERC-20 transfers + protocol fee capture.
+**On-chain flow (the demo money shot):** taker calls `swap()` on the router; the program runs `[deadline][flatFee][concentrate][salt]` (PRG-R1 v2); the `preTransferOut` maker hook fires, the vault unparks exact USDC from Aave (aUSDC burn); Aqua `pull` transfers USDC vault->taker; taker's WETH is `push`ed back to the vault and auto-compounds into the strategy's virtual balance. One transaction: Aave withdrawal + both real ERC-20 transfers + the 80 bps premium accruing to the vault.
 
 **Cross-repo sync:** deployed addresses + ABIs flow from `pool-party-aqua` (`VERIFIED.md`) into the frontend branch's `src/lib/aqua/config.ts` as committed artifacts. Nothing imports across repos. Full detail: 02_WORKPLAN.md.
 
@@ -122,7 +122,7 @@ Mandate form (frozen shape) + compiled review + manage view (band vs price, cove
 - **REDUCED**: [POO-1065](https://linear.app/yeildbay/issue/POO-1065) indexer becomes a **status/report script** (`pnpm aqua:status`): reads `rawBalances`, `parkedBalance`, wallet balances, decodes recent `Pulled/Pushed/Swapped` logs, prints NAV + a simple carry-vs-fills attribution. No DB-backed series. [POO-1071](https://linear.app/yeildbay/issue/POO-1071) Drizzle scope shrinks to TWO tables (`aqua_ships`, `aqua_fills`); mirror introspection deferred. [POO-1059](https://linear.app/yeildbay/issue/POO-1059) keeps all rules but test depth targets the essentials: share-math properties (inflation attack), role boundaries, caps, JIT hook path.
 - **STRETCH ONLY (zero critical path)**: [POO-1067](https://linear.app/yeildbay/issue/POO-1067) as ONE ultra-minimal page (vault views + Deposit/Redeem buttons) only if a dedicated session runs it fully in parallel; the demo qualifies with scripts alone per the hackathon brief ("test scripts or UI").
 - **UNCHANGED**: [POO-1058](https://linear.app/yeildbay/issue/POO-1058), [POO-1060](https://linear.app/yeildbay/issue/POO-1060), [POO-1061](https://linear.app/yeildbay/issue/POO-1061), [POO-1062](https://linear.app/yeildbay/issue/POO-1062), [POO-1066](https://linear.app/yeildbay/issue/POO-1066) MVP, [POO-1070](https://linear.app/yeildbay/issue/POO-1070).
-- **ADDED (approved)**: a second **demo band mandate** (spot-1%..-0.2%, same fees/epoch, distinct salt) shipped at launch so stage fills execute near market and the demo shows one vault backing two simultaneous strategies with the same capital. Demo honesty framing: our own taker generates the fills to demonstrate the machine; Aave carry is the external, real yield in the window; in production the premium is paid by arbitrageurs when price enters the band and by 1inch-routed flow once aggregation integrates Aqua.
+- **ADDED (approved)**: a second **demo band mandate** (spot-0.3%..-0.1%, same fees/epoch, distinct salt) shipped at launch so stage fills execute near market and the demo shows one vault backing two simultaneous strategies with the same capital. Demo honesty framing: our own taker generates the fills to demonstrate the machine; Aave carry is the external, real yield in the window; in production the premium is paid by arbitrageurs when price enters the band and by 1inch-routed flow once aggregation integrates Aqua.
 
 ### 6.2 Waves
 
@@ -130,7 +130,7 @@ Mandate form (frozen shape) + compiled review + manage view (band vs price, cove
 |---|---|---|
 | **T+0 to T+3** | Ground truth + skeletons + Solidity underway | [1058](https://linear.app/yeildbay/issue/POO-1058) verify/rehearsal; [1071](https://linear.app/yeildbay/issue/POO-1071) minimal scaffolds; [1059](https://linear.app/yeildbay/issue/POO-1059) vault; [1060](https://linear.app/yeildbay/issue/POO-1060) adapter |
 | **T+3 to T+8** | Rehearsal green; contracts tested; compiler done; taker ready on fork | finish 1058/1071; 1059/1060 tests; [1061](https://linear.app/yeildbay/issue/POO-1061) compiler + CLI; [1066](https://linear.app/yeildbay/issue/POO-1066) taker on fork; [1070](https://linear.app/yeildbay/issue/POO-1070) README skeleton |
-| **T+8 to T+12** | **MAINNET LAUNCH** | [1062](https://linear.app/yeildbay/issue/POO-1062): deploy, verify, caps, seed, TWO ships (production band spot-15%..-5% AND the approved **demo band spot-1%..-0.2%**, combined shipped USDC within the 10% sleeve per PRG-R5/R6), smoke test; then 1066 first real fills on the demo band including one bigger than the hot buffer (the JIT money-shot trace) |
+| **T+8 to T+12** | **MAINNET LAUNCH** | [1062](https://linear.app/yeildbay/issue/POO-1062): deploy, verify, caps, seed, TWO ships (production band spot-15%..-5% AND the approved **demo band spot-0.3%..-0.1%**, combined shipped USDC within the 10% sleeve per PRG-R5/R6), smoke test; then 1066 first real fills on the demo band including one bigger than the hot buffer (the JIT money-shot trace) |
 | **T+12 to T+17** | Evidence accumulation + ops demo | more fills into `FILLS.md`; manual roll demo (dock+ship); [1065](https://linear.app/yeildbay/issue/POO-1065) status/attribution report; 1067 stretch page if staffed; 1070 runbook writing |
 | **T+17 to T+20** | Package + dry run | recording, submission checklist, secret scan, flip-to-public decision, full demo dry run, buffer |
 

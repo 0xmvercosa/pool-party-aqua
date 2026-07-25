@@ -25,6 +25,10 @@
 2. On-chain token transfers demonstrated with real fills on Arbitrum mainnet (see `docs/FILLS.md` when populated).
 3. Phased commit history, PR per Linear issue.
 
+## Continuity and what is new
+
+Per the hackathon continuity rule: everything in THIS repository was created during the event window (history starts 2026-07-25, pushed continuously). The demo also shows the pre-existing Pool Party investor app (private product repo `pool-party-v2-frontend`, in development since May 2026); the hackathon-new work there is confined to the branch `feat/aqua-poo-1057-hackathon` (Aqua server module, Drizzle schema, Active Reserve surfaces) and is documented in `docs/03_EXECUTION_PLAN.md`. All on-chain-facing code (contracts, deploy, rehearsal, taker, status report) lives in this public repo so every claim is verifiable.
+
 ## Licensing and security
 
-1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). The modified router's source is published here per the license's copyleft terms. Review the upstream licenses before any commercial use. No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
+1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). The modified router's source is published here per the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution required by the upstream license: "Aqua — © Degensoft Ltd 2025". No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.

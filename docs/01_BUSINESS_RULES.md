@@ -1,7 +1,7 @@
 # Aqua Strategies: Business Rules (v1)
 
 **Date:** 2026-07-25
-**Status:** v1 (SRV section at v3). Decisions D1-D7, D9, D10 are RESOLVED (2026-07-25); all decisions D1-D10 RESOLVED. History on the epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057). Any rule change after confirmation increments the version here, on the issue labels (`rules:vN`), and in file headers, per the project's rule-versioning discipline.
+**Status:** v2 (post Rafael source/on-chain review, 2026-07-25; amendments approved by Murilo). ALL decisions D1-D10 RESOLVED. Upstream source of truth PINNED: the live gen-2 router runs the v1.0.1-era array opcode table, read `swap-vm@v1.0.1`, NEVER `main`; SDKs pinned exact (`@1inch/swap-vm-sdk@0.3.0`, `@1inch/aqua-sdk@0.2.0`). Canonical addresses and confirmed traps: `docs/VERIFIED.md`. History on the epic [POO-1057](https://linear.app/yeildbay/issue/POO-1057).
 **Scope:** single source of truth for all numbered rules of the Aqua hackathon build. Each Linear issue embeds its own subset verbatim; on divergence, THIS FILE wins and the issue must be re-synced. Canonical home: `docs/` of this dedicated hackathon repo.
 
 Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + database), PRG (program compiler), KPR (keepers), BOT (taker bot), IDX (indexer/NAV), RTR (PartyRouter), FE (frontend). Cross-references use `VLT-R4` style.
@@ -11,6 +11,8 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 ---
 
 ## VLT: PartyVault ([POO-1059](https://linear.app/yeildbay/issue/POO-1059))
+
+> **20h-window cut (approved):** in-window scope = R1 (4626 math + decimals offset), R2 (manager seeds first), R3 (internal ledger + views + events), execShip/execDock under a SINGLE OWNER, R9 (JIT hook, allowlisted router only), R10 reduced to `maxTvl` only, R11 (dockAll). DEFERRED and named in the README as designed-but-not-shipped: R4 (in-vault staleness gate; status script reads the feed off-chain), R6 (lockup), R7 keeper role split (no keeper exists in-window), R8 (HWM performance fee), maxPerShip + token allowlist (no external capital in-window; window seed is $50-200 per amended D3).
 
 - **VLT-R1** Deposits are USDC only. Shares minted with OpenZeppelin ERC-4626 math internally (same conversion formulas, rounding down, decimals offset +3 anti-inflation). Deposit reverts if resulting TVL > `maxTvl`.
 - **VLT-R2** The first deposit must come from the MANAGER address (manager seed); other deposits revert until seeded.
@@ -44,14 +46,16 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 
 ## PRG: Program compiler ([POO-1061](https://linear.app/yeildbay/issue/POO-1061))
 
-- **PRG-R1** Canonical program order, always: `[deadline][AquaProtocolFeeAmountIn][flatFeeAmountInXD][concentrateGrowLiquidity2D][salt]`. Curve instructions are TERMINAL; a fee emitted after the curve is a bug (silently never applied).
-- **PRG-R2** Ship registers BOTH tokens; empty side ships amount 0 (upstream reverts otherwise).
+- **PRG-R1 (v2)** Canonical v1 program order, always: `[deadline][flatFeeAmountInXD][concentrateGrowLiquidity2D][salt]`. Curve instructions are TERMINAL; a fee emitted after the curve is a bug (silently never applied). The on-chain protocol fee opcode is OUT of v1 (see PRG-R7 v2); if the rehearsal confirms a tokenOut fee variant, it is inserted before the flat fee.
+- **PRG-R2 (v2)** Ship registers BOTH tokens (registration = `tokensCount`, required by `safeBalances`/`push`). Amount 0 on the empty side is valid ONLY if no opcode pulls that token during execution. Because `*FeeAmountIn` opcodes pull **tokenIn** (WETH on our buy band) inside `runLoop`, the v1 program must contain NO tokenIn-pulling fee opcode (see PRG-R7 v2). Compiler enforces: for every opcode in the program that pulls token T, shipped amount of T must cover it.
 - **PRG-R3** Band entirely below spot at build time: `bandHigh <= chainlinkSpot * 0.98`; compiler refuses otherwise.
 - **PRG-R4** `deadline` = epoch end (D5 RESOLVED: **3 days**, Murilo picked the short epoch for more live rolls); `salt` = epoch id (docked strategyHash is dead forever).
 - **PRG-R5** Shipped USDC <= min(`maxPerShip`, `bandSleevePct` x totalAssets) (D5 RESOLVED: 10%).
 - **PRG-R6** Coverage v1 = 1.0: sum of shipped USDC across active strategies <= vault total USDC. No over-commit in v1 (SLAC deferred to later products).
-- **PRG-R7** Program fees per D4 (RESOLVED: protocol 5 bps to treasury via `AquaProtocolFeeAmountIn`; flat fee 80 bps dip premium). Only allowlisted routers as `app`.
+- **PRG-R7 (v2)** v1 program carries the 80 bps flat fee ONLY (`flatFee`, a pure price adjustment, no transfer, accrues to the maker). The on-chain protocol fee via `AquaProtocolFeeAmountIn` is REMOVED from v1: it charges on tokenIn (WETH) during `runLoop` and reverts against a WETH-at-0 ship (confirmed in source + by all 4 live programs avoiding it). Platform economics for the window: documented, not charged (HWM fee is deferred with VLT-R8). REHEARSAL CHECK (POO-1058): if a `protocolFeeAmountOutXD` variant (charged on tokenOut = USDC, which we DO ship) exists in the deployed array and the SDK exposes it, the on-chain protocol fee returns in v1 charged in USDC. Only allowlisted routers as `app`.
 - **PRG-R8** Roll = `dock(old) + ship(new)` batched in one action.
+- **PRG-R9 (new)** The bytes shipped to Aqua are the **ABI-encoded Order struct** (program inside the last slice of `order.data`; hook-slice offsets in traits bits 160-223), not the bare program. `strategyHash = keccak256(order bytes)`. `compile()`'s return shape reflects this.
+- **PRG-R10 (new)** A docked strategyHash is dead forever. Every roll MUST change the salt; the compiler enforces it and has a test for it. Aqua mode also requires `receiver == maker` (the vault) and forbids WETH unwrap.
 - Frozen mandate shape: `{ pair: {base: WETH, quote: USDC}, bandLowPct, bandHighPct, feeBps, epochDays, bandSleevePct, maxPerShip }`.
 
 ## KPR: Keepers ([POO-1069](https://linear.app/yeildbay/issue/POO-1069))
@@ -67,7 +71,7 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 ## BOT: Taker bot ([POO-1066](https://linear.app/yeildbay/issue/POO-1066))
 
 - **BOT-R1** MVP: configurable size, dry-run mode, single fill on command.
-- **BOT-R2** Arb mode executes only when `expectedProfit > gasCost + marginBps`; logs every decision.
+- **BOT-R2 (v2)** In-window fills are **self-directed settlement proofs** from our own taker wallet, labeled as such everywhere (a below-spot bid band cannot win arbitrage by construction). In production, organic fills are CONDITIONAL on the market entering the band: during real dips, selling to the band becomes the best bid and arbitrageurs fill it; that is the product working as designed. Arb mode (profit > gas + margin) only ever fires in that regime and stays CUT for the window.
 - **BOT-R3** Max size per fill + max daily volume caps; never exceeds quoted depth.
 - **BOT-R4** Bot wallet separate from manager/keeper keys; holds only working capital.
 - **BOT-R5** Every fill's tx hash appended to `FILLS.md`.
@@ -116,10 +120,10 @@ Component prefixes: VLT (PartyVault), ADP (carry adapter), SRV (server module + 
 | D1 | ~~Repo location~~ RESOLVED (Murilo 2026-07-25): ONE new dedicated repo `pool-party-aqua` on Murilo's personal GitHub account. Only VISIBILITY pending (proposal public; needed by submission time + router copyleft) | Prepared locally at `~/Documents/pool-party-aqua`; GitHub creation after visibility confirmed | POO-1071 |
 | D2 | ~~Backend during hackathon~~ RESOLVED (Murilo 2026-07-25): no backend service; Next server actions module + database (SRV rules) | n/a | n/a |
 | D10 | Postgres for the app: reuse the existing Neon project (new `aqua_*` tables) or a fresh Neon project/branch | Fresh Neon project/branch; hackathon state isolated | POO-1071 |
-| D3 | Launch capital + cap schedule | maxTvl $5k -> $20k after 48h clean; manager wallet = Murilo | POO-1062 |
+| D3 | AMENDED for the 20h window (review, approved): seed **$50-200** own capital, maxTvl set accordingly; the $5k -> $20k / 48h schedule becomes the POST-event guarded launch | window seed $50-200 | POO-1062 |
 | D4 | Fee numbers | protocol 5 bps/fill; flat 80 bps; perf 20% HWM; lockup 0d | first ship (POO-1062) |
 | D5 | Mandate defaults | band spot-15%..-5%; epoch 7d; drift 10%; buffer 5%; coverage 1.0 | first ship |
 | D6 | FE inside hackathon window | Yes, parallel, flag off | POO-1064/1067/1068 start |
-| D7 | Hackathon final demo date | UNKNOWN, needed for scheduling | POO-1070 |
+| D7 | RESOLVED then AMENDED: **20 hours** to the demo; wave plan + cuts in `03_EXECUTION_PLAN.md` section 6 | n/a | all |
 | D8 | RESOLVED (Murilo 2026-07-25): product name **Active Reserve** (formerly working name Party Notes 90/10). Official 280-char description in section FE below | n/a | copy in POO-1067 |
 | D9 | Oracle params | maxPriceDecay 50 bps; maxStaleness 90 min | POO-1063 deploy, VLT-R4, KPR-R4 |
