@@ -70,9 +70,13 @@ async function main(): Promise<void> {
   // Salts derive from the block number so every roll is guaranteed a fresh value (PRG-R10).
   const epochBase = block.number;
 
+  // Ship sizes come from the environment so the walkthrough can size them against whatever
+  // seed is used, while keeping the combined amount inside the 10 percent sleeve (PRG-R5/R6).
+  const demoShip = process.env.DEMO_SHIP_USDC ?? "600000";
+  const prodShip = process.env.PROD_SHIP_USDC ?? "350000";
   const bands: Array<{ name: string; band: Band; salt: bigint; shipUsdc: string }> = [
-    { name: "DEMO band (-0.3% .. -0.1%)", band: bandFromSpot(spotE8, -30n, -10n), salt: epochBase * 10n + 1n, shipUsdc: "600000" },
-    { name: "PRODUCTION band (-15% .. -5%)", band: bandFromSpot(spotE8, -1500n, -500n), salt: epochBase * 10n + 2n, shipUsdc: "400000" },
+    { name: "DEMO band (-0.3% .. -0.1%)", band: bandFromSpot(spotE8, -30n, -10n), salt: epochBase * 10n + 1n, shipUsdc: demoShip },
+    { name: "PRODUCTION band (-15% .. -5%)", band: bandFromSpot(spotE8, -1500n, -500n), salt: epochBase * 10n + 2n, shipUsdc: prodShip },
   ];
 
   for (const { name, band, salt, shipUsdc } of bands) {
