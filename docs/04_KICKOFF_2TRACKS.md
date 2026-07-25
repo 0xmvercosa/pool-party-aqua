@@ -51,3 +51,28 @@
 - Hold the manager key; sign: deploys, seed, ships, rolls.
 - Rule calls when pinged: fee tokenOut verdict at S1; any frozen-interface change; cut decisions at checkpoints.
 - Final demo recording + submission.
+
+---
+
+## Phase 2 split: remaining work after the merge train (2026-07-25 ~19h)
+
+All 5 PRs are merged; main is green (forge 62/62, gate, verify-onchain). What remains, same two tracks:
+
+### Track A (contracts): launch readiness + evidence
+
+1. **RUNBOOK gap pass** (POO-1062, ~30-60 min): verify or patch the three review items: (a) Smoke prints the router and WETH allowance lines, not only USDC->Aqua; (b) a concrete `execDock` command exists for rolls (Ops contract or documented cast call); (c) a post-deploy ON-CHAIN adapter<->vault binding check (the Deploy.s.sol requires run only in simulation). Partially covered already; confirm item by item.
+2. **Launch dry-run**: one full `pnpm fork:all` + the launch fork suite on current main, fresh fork, immediately before the real thing.
+3. **Drive POO-1062 with Murilo signing**: deploy, Arbiscan verify (source published), maxTvl, seed 50-200 USDC, park, TWO ships (PRG-R1 v3 programs). Record every address + tx in VERIFIED.md and RUNBOOK.md as you go.
+4. **Evidence capture**: the JIT money-shot trace (aUSDC burn + Pulled + push in one tx) recorded the moment it lands, plus the 26k-gas JIT figure for the demo.
+5. Hygiene: drop unused `.env.example` vars; final gitleaks scan before submission (with B).
+
+### Track B (TypeScript rails): frontend PR + investor page + fills
+
+1. **Land PR #664** (pool-party-v2-frontend, POO-1071+1061): FIRST self-audit the compiler against the post-measurement rules, since the commit predates part of the docs-sync: program order must be PRG-R1 v3 `[deadline][concentrateGrowLiquidity2D][flatFeeAmountInXD 80bps][xycSwapXD][salt]`; roll MUST change salt (with a test, PRG-R10); ship bytes = ABI-encoded Order struct (PRG-R9); hook constants match the measured 9-arg preTransferOut. Fix what diverges, run the frontend gate (pnpm typecheck && lint && test), merge into `feat/aqua-poo-1057-hackathon`.
+2. **POO-1067 minimal read-only page** (after #664, 2-4h): vault state, sleeves (carry vs band), band vs Chainlink spot, epoch countdown, fills feed with Arbiscan links, NAV; Active Reserve name + official description verbatim (FE-R10); EN copy for the window; deposit/redeem buttons only if time remains. This is the Usability axis of the judging rubric.
+3. **After launch**: run the taker (`--execute`, bounded) for >= 3 mainnet fills including one above the hot buffer; `pnpm status` for the demo numbers screen; FILLS.md is the ledger.
+4. **POO-1070 with A**: README final pass, demo dry-run, submission checklist.
+
+### Sync points
+
+S-launch (A + Murilo signing, B on standby for payload questions) -> fills + immediate recording (B fills, A captures) -> package + dry-run (both + Murilo).
