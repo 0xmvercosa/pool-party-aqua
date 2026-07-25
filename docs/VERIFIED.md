@@ -42,7 +42,7 @@ Reproduce: `pnpm verify:onchain`.
 ## Program-shape facts confirmed in source (do not re-litigate)
 
 1. `safeBalances` never reads the ERC-20 wallet balance: a vault with a small hot buffer can quote the full sleeve; only `pull` at settlement needs real tokens. The 90/10 premise holds.
-2. The `preTransferOut` maker hook fires BEFORE `AQUA.pull` in Aqua mode: JIT Aave withdrawal inside the settlement tx works.
+2. The `preTransferOut` maker hook fires BEFORE `AQUA.pull` in Aqua mode: JIT Aave withdrawal inside the settlement tx works. **PROVEN on the fork (POO-1058, trap A)**, with the exact signature measured; see "Maker hook: the measured interface" below.
 3. **Fee direction trap**: `AquaProtocolFeeAmountIn`/`protocolFeeAmountInXD` charge on **tokenIn** and pull DURING `runLoop`, before settlement transfers. On a buy band tokenIn is WETH; a WETH-at-0 ship makes the fill revert. See PRG-R7 (v2) for the v1 resolution. **CORRECTION (POO-1058):** PRG-R7 v2 justified this partly with "confirmed [...] by all 4 live programs avoiding it". That is false. **All four live gen-2 programs USE `aquaProtocolFeeAmountInXD`** (0x1c, fee 125000 or 25000 of 1e9, to `0x8063d4faf54bf8c898dc6ddc689c76ab12b4614a`). They can afford to: they ship both sides with non-zero amounts, so the tokenIn pull always has balance. Our WETH-at-0 buy band is the case that breaks. The rule's conclusion stands; only its evidence was wrong.
 4. Ship bytes = the **ABI-encoded Order struct** (program inside the last slice of `order.data`), not the bare program. `strategyHash = keccak256(order bytes)`.
 5. A docked strategyHash is dead forever (`_DOCKED`, not 0): every roll MUST change the salt.
@@ -74,14 +74,59 @@ Corrected canonical order for our band strategy (PRG-R1 v3 proposal, pending Mur
 
 `deadline` (0x0d) is used by no live program; it is our own epoch guard and belongs first, before anything executes.
 
+## Maker hook: the measured interface (POO-1058, ACTION REQUIRED FOR TRACK A)
+
+The published SwapVM ABI does not document the maker hook. The rehearsal captured the raw calldata the deployed router sends to a maker contract and matched the selector. **This is measured, not inferred:**
+
+```solidity
+// selector 0x5a394f80
+function preTransferOut(
+    address maker,
+    address taker,
+    address tokenIn,
+    address tokenOut,      // what the maker owes the taker: the token the vault must hold
+    uint256 amountIn,
+    uint256 amountOut,     // how much of it, exactly
+    bytes32 orderHash,     // == strategyHash
+    bytes calldata makerHookData,  // whatever the maker put in MakerTraits.preTransferOutHook
+    bytes calldata takerHookData   // whatever the taker put in TakerTraits.preTransferOutHookData
+) external;
+```
+
+**The kickoff's frozen vault surface names this `onPreTransferOut(token, amount)`. That is wrong** in both name and arity, and a vault implementing it would never be called: the router would call a function the vault does not have, the hook would revert or no-op, and every fill larger than the hot buffer would fail at launch. Track A must implement the signature above.
+
+Two more details Track A needs:
+
+- **Hook target**: set `MakerTraits.preTransferOutHook = Interaction(target = address(0), data)`. Zero target means "call the maker itself", which is what the vault wants.
+- **Hook data cannot be empty**: the SDK's `Interaction` asserts non-empty hex bytes. Pass at least one byte. The router does not interpret it, it just forwards it as `makerHookData`.
+
+Measured JIT trace (trap A): vault wallet held 100 USDC, adapter held 1900, the full 2000 sleeve was shipped, and a fill requiring 860.07 USDC settled in one transaction after the hook unparked 760.07. Gas 309,224 with a stub adapter; the real Aave `withdraw` will add to that, so Track A should publish the real number with POO-1060.
+
 ## Fill in during POO-1058 / POO-1062
 
 - [x] **Builder round-trip vs live ship #0: PASS** (byte-identical on all 4 live ships, `pnpm verify:onchain`)
 - [x] **`protocolFeeAmountOutXD` present in the deployed array and SDK? NO.** The Aqua instruction set has no `*AmountOut*` fee opcode at all: slots 0x16-0x1a are empty, and `protocolFeeAmountOutXD` / `aquaProtocolFeeAmountOutXD` / `flatFeeAmountOutXD` exist only in `_allInstructions` (the regular SwapVM router set), never in `aquaInstructions`. `AquaProgramBuilder.add()` rejects them by construction. **Verdict: the on-chain protocol fee stays OUT of v1. PRG-R7 v2 holds unchanged.**
 - [x] **Are the gen-2 makers EOAs? YES.** Four ships, two distinct makers (`0x410326e6...`, `0x6edc317f...`), both with zero code. No pooled-custody Aqua maker exists yet; the demo claim holds.
-- [ ] Rehearsal tx hashes (fork): approve, ship, quote, swap, dock
-- [ ] Hook firing (`preTransferOut`) with a stub maker on the fork
+- [x] **Rehearsal (fork): approve -> ship -> quote -> swap -> dock all GREEN.** `pnpm rehearse`, 28 checks. Fork tx hashes are per-run (Anvil), so the reproducible artifact is the script, not a hash list.
+- [x] **Hook firing (`preTransferOut`) with a stub maker on the fork: PASS**, including a fill 8.6x larger than the hot buffer settling in one transaction. `pnpm rehearse:traps`, trap A.
 - [ ] Mainnet: adapter address, vault address, ship txs, strategyHashes (production band + demo band)
+
+## Traps demonstrated on-chain (POO-1058, `pnpm rehearse:traps`)
+
+Each of these is a failing input we watched break, with the revert identified where the ABI allows it. They become the compiler's guardrails in POO-1061.
+
+| Trap | Result | Revert |
+|---|---|---|
+| A | maker hook fires strictly before the pull; oversized fill settles in one tx | n/a (success) |
+| B | `ship()` moves zero tokens: registration is accounting only | n/a (success) |
+| C | fee emitted AFTER the curve makes the strategy unquotable | `0x77e79f46` (unpublished) |
+| C | PRG-R1 v2 order verbatim, no `xycSwapXD` | `TakerTraitsAmountOutMustBeGreaterThanZero` |
+| D | one-token ship (WETH side omitted rather than shipped at 0) | `SafeBalancesForTokenNotInActiveStrategy` |
+| E | tokenIn fee opcode against a WETH-at-0 ship | arithmetic underflow (panic 0x11) |
+| F | `aquaProtocolFeeAmountOutXD` in an Aqua program | rejected by `AquaProgramBuilder.add` |
+| G | re-shipping a docked program | `StrategiesMustBeImmutable` |
+
+Trap C is worth reading twice. The upstream claim is that a post-curve fee is "silently never applied". On the deployed router it is worse and better than that: the strategy simply cannot be quoted. A mis-ordered program can therefore never reach a fill, which is a much safer failure mode than silently forgoing the premium.
 
 ## Reproduction commands
 
