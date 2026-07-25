@@ -24,7 +24,8 @@
     "fork:taker": "scripts/with-fork.sh pnpm rehearse:taker",
     "fork:all": "scripts/with-fork.sh sh -c \"pnpm rehearse && pnpm rehearse:traps && pnpm rehearse:taker\"",
     "taker": "tsx scripts/taker.ts",
-    "status": "tsx scripts/status.ts"
+    "status": "tsx scripts/status.ts",
+    "scan:secrets": "python3 scripts/secret-scan.py --selftest ."
   },
   "dependencies": {
     "@1inch/aqua-sdk": "0.2.0",
