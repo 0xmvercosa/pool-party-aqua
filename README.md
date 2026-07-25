@@ -72,7 +72,7 @@ Per the hackathon continuity rule: everything in THIS repository was created dur
 
 ## Licensing and security
 
-1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). No upstream source is vendored into this repository: our contracts restate only the ABI shapes they call, and each such file cites the upstream tag it was transcribed from (`aqua` v1.0.0, `swap-vm` v1.0.1). Should PartyRouter ship after the window, its source is published under the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution required by the upstream license: "© 2025 Degensoft Ltd" (Aqua, SwapVM). No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
+1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). No upstream source is vendored into this repository: our contracts restate only the ABI shapes they call, and each such file cites the upstream tag it was transcribed from (`aqua` v1.0.0, `swap-vm` v1.0.1). Should PartyRouter ship after the window, its source is published under the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution, quoted verbatim as the upstream license requires it: "Aqua — © Degensoft Ltd 2025". No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
 
 ## Running the rehearsals
 

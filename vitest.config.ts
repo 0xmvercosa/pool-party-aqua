@@ -5,6 +5,7 @@ import { defineConfig } from "vitest/config";
 // resolver, which accepts extensionless specifiers, same as tsx does for the scripts.
 export default defineConfig({
   test: {
+    include: ["scripts/**/*.test.ts"],
     server: { deps: { inline: [/@1inch\//] } },
   },
 });

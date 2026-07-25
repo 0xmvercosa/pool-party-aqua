@@ -68,7 +68,7 @@ SwapVM is an on-chain interpreter. A **program** is a byte string (`[opcode:1B][
 
 **Two traps the team must internalize** (both broke most of our machine-generated candidate designs; both were caught by source-level review):
 
-1. **Curve instructions are terminal.** `concentrate`, `peggedSwap`, `xycSwap` end the program. The canonical composition order is `[deadline] [protocolFee] [flatFee] [adjusters] [curve] [salt]` (see upstream `test/base/AquaStrategyBuilders.sol`). Fee opcodes placed after the curve are silently never applied.
+1. **Program order is measured, not read from `main`.** On the deployed router, `concentrateGrowLiquidity2D` SHAPES reserves and `xycSwapXD` executes the swap on them; the flat fee sits between the two, and a fee placed after the executing curve makes the strategy revert at quote time (NOT silently ignored). Canonical v1 order (PRG-R1 v3, measured in POO-1058): `[deadline][concentrateGrowLiquidity2D][flatFeeAmountInXD 80bps][xycSwapXD][salt]`. `docs/VERIFIED.md` is the authority; this doc's upstream line references were written against `main`, which the live router does not run.
 2. **Both tokens must always be shipped.** A one-sided strategy (e.g. a buy band holding only USDC) must still `ship` the other token with amount 0, or `safeBalances` reverts at quote and the taker's `push` reverts at fill (`Aqua.sol` L30-38, L72-79).
 
 **Maker hooks are confirmed to fire in Aqua mode.** `SwapVM.sol` `_transferOut` (L309-321) runs the `preTransferOut` maker hook **before** the `AQUA.pull` branch. This is the load-bearing fact behind JIT lending withdrawal: the hook can pull exactly the needed amount out of Aave in the same transaction, before Aqua transfers it to the taker.
@@ -202,7 +202,7 @@ interface ICarryAdapter {
 ```
 Phase 1 ships `AaveV3Adapter` (~50 lines over the Aave pool). Compound/Morpho become additional ~50-line adapters with zero vault-core changes. The vault keeps a small configurable hot buffer un-parked to keep small fills cheap.
 
-**JIT hook endpoint:** `onPreTransferOut(token, amount)` restricted to the settlement context (allowlisted router), calls `adapter.unpark()` for the shortfall beyond the hot buffer. A `postTransferIn` sweep (or keeper cron) re-parks incoming tokens.
+**JIT hook endpoint:** the measured `preTransferOut(maker, taker, tokenIn, tokenOut, amountIn, amountOut, orderHash, makerHookData, takerHookData)` (selector `0x5a394f80`, measured in POO-1058), restricted to the settlement context (allowlisted router); calls `adapter.unpark()` for the `tokenOut` shortfall beyond the hot buffer. A sweep (keeper-driven) re-parks incoming tokens.
 
 **Fees:**
 - **Pool Party protocol fee: on-chain, per fill**, via the `AquaProtocolFeeAmountIn` opcode inside every program (pulled to the treasury address by Aqua during settlement). Not vault code; program code.
@@ -215,11 +215,12 @@ The canonical Party Notes program (deployed subset only, phase 1):
 
 ```
 [deadline(epoch end)]
-[AquaProtocolFeeAmountIn(treasury, ~5 bps)]
-[flatFeeAmountInXD(dip premium, 50-100 bps)]
-[concentrateGrowLiquidity2D(bandLow, bandHigh)]   <- terminal curve
+[concentrateGrowLiquidity2D(bandLow, bandHigh)]   <- shapes the reserves
+[flatFeeAmountInXD(dip premium, 80 bps)]
+[xycSwapXD]                                       <- the executing curve
 [salt(epoch id)]
 ```
+(PRG-R1 v3, measured. The on-chain protocol fee opcode is out of v1: it charges tokenIn during execution and our WETH side ships at 0; see PRG-R7 v3.)
 
 Shipped balances: full USDC sleeve amount + **WETH at amount 0** (both-token registration rule). The band sits below spot, so the strategy only bids: it buys WETH during dumps; pushed WETH compounds into the strategy's virtual balance. Phase 3 inserts `[oraclePriceAdjuster(feed, maxStaleness, maxPriceDecay)]` between the fees and the curve, on our router.
 
@@ -267,7 +268,7 @@ Note: per Murilo's direction this workstream is wired against real Arbitrum from
 
 Every phase ends with something real on Arbitrum mainnet, demoable and valuable on its own. If the hackathon clock runs out mid-plan, we cut from the top, never ship half a phase. Phases 0-3 are the hackathon-critical path; 4 completes the product surface; 5 is expansion. Commit discipline: small PRs per component throughout (also a hackathon qualification requirement: no single-commit dumps).
 
-### Phase 0: Verification spike (day 0-1) — kills all remaining unknowns
+### Phase 0: Verification spike (day 0-1): kills all remaining unknowns
 
 - Resolve the canonical Aqua + AquaSwapVMRouter addresses on Arbiscan (bytecode diff vs source, evidence of usage). Fallback if absent/ambiguous: deploy official unmodified source via the upstream Ignition modules (still "official contracts" per the rules).
 - Fork rehearsal (anvil, ~2h): EOA approve + ship a minimal both-token concentrate program + swap + dock, copied from the SDK e2e specs. Proves address, program composition, and settlement end-to-end before any real money.

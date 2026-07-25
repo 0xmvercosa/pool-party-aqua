@@ -7,7 +7,7 @@
 ## Two homes (final structure, Murilo 2026-07-25)
 
 ```
-pool-party-aqua/                    (THIS repo, 0xmvercosa, private now -> public at submission)
+pool-party-aqua/                    (THIS repo, 0xmvercosa, PUBLIC)
   contracts/                        Foundry: PartyVault, AaveV3Adapter, PartyRouter, tests
   scripts/                          deploy, fork rehearsal, verification
   docs/                             THIS folder: 00/01/02, VERIFIED.md, RUNBOOK.md, FILLS.md
@@ -61,15 +61,15 @@ UI minimal-first: one investor strategy page + invest/withdraw is worth more in 
 1. **One session = one issue = one branch** (`<type>/aqua-poo-<num>-<slug>` off `main`). PR per issue, squash-merge. Never commit to `main` directly. Commit convention `<type>(aqua): <description>`; hackathon rule: honest incremental commits (history is judged).
 2. **Frozen interfaces are law.** These may NOT change without a comment on the epic and Murilo's ack:
    - `ICarryAdapter { park, unpark, parkedBalance }` (defined in POO-1059 body)
-   - Vault external surface: `deposit`, `redeem`, `sharesOf`, `convertToShares/Assets`, `totalAssets`, `execShip`, `execDock`, `dockAll`, `onPreTransferOut`, `sweep`, events `Deposited`/`Redeemed`
+   - Vault external surface: `deposit`, `redeem`, `sharesOf`, `convertToShares/Assets`, `totalAssets`, `execShip`, `execDock`, `dockAll`, `preTransferOut` (measured 9-arg hook), events `Deposited`/`Redeemed`
    - Mandate shape: `{ pair, bandLowPct, bandHighPct, feeBps, epochDays, bandSleevePct, maxPerShip }`
-   - Canonical program order: `[deadline][AquaProtocolFeeAmountIn][flatFeeAmountInXD][(oraclePriceAdjuster when PartyRouter)][concentrateGrowLiquidity2D][salt]`
+   - Canonical program order (PRG-R1 v3, measured): `[deadline][concentrateGrowLiquidity2D][flatFeeAmountInXD 80bps][xycSwapXD][salt]`
    - `compile(mandate)` return shape (POO-1061)
    - Drizzle table names `aqua_mandates`, `aqua_ships`, `aqua_fills`, `aqua_nav_snapshots`, `aqua_keeper_log`
 3. **Addresses come from one place**: the shared config produced by POO-1058 (`VERIFIED.md` + `src/lib/aqua/config.ts`). Hardcoding an address anywhere else is a review-blocking defect.
 4. **Rules drift**: if implementation reveals a rule is wrong or incomplete, STOP, comment on the issue + epic, wait for Murilo. Rule changes bump the version (v1 -> v2) in `01_BUSINESS_RULES.md`, the issue, and the `rules:vN` label. Never silently deviate.
 5. **Docs updates land with the PR that makes them true** (VERIFIED/RUNBOOK/FILLS + rules re-sync). A PR that changes behavior without touching the affected doc is incomplete.
-6. **Two upstream traps every session must know** (cost the judged ideas dearly): curve instructions are TERMINAL (fees after the curve never apply) and one-sided strategies must still ship BOTH tokens (empty side amount 0). Both are encoded as compiler guardrails (PRG-R1/R2); contract and UI sessions should still know why.
+6. **Two upstream traps every session must know** (measured in POO-1058): a fee placed after the executing curve (`xycSwapXD`) makes the strategy REVERT at quote time (PRG-R1 v3; concentrate only shapes reserves), and one-sided strategies must still ship BOTH tokens (empty side amount 0, and no opcode may pull the zero-side token). Both are compiler guardrails (PRG-R1/R2); contract and UI sessions should still know why.
 7. **Mainnet discipline**: nothing touches mainnet before POO-1058 is Done and D3/D4 are confirmed; only POO-1062 and later POO-1063 migration send mainnet txs from privileged keys; the bot uses its own wallet with its own small funds (BOT-R4).
 8. **No em dash anywhere** (copy, comments, docs). English for all code/docs/Linear.
 
