@@ -252,7 +252,7 @@ ordering is now in [../../RUNBOOK.md](../../RUNBOOK.md) section 7b.
 
 ## 7. What the evidence does and does not show
 
-The three fills are **self-directed settlement proofs**. Our own taker wallet bought from our own
+The three buy-side fills are **self-directed settlement proofs**. Our own taker wallet bought from our own
 strategy. They are not arbitrage profit and they are not organic demand, and we would rather say so
 than let a judge discover it.
 

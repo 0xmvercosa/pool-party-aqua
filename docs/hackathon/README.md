@@ -7,7 +7,8 @@ below spot. Aqua quotes that band off virtual balances, so the whole sleeve is q
 money is still in Aave. When a taker fills, the router calls the vault's `preTransferOut` hook before
 it moves anything, the vault withdraws exactly the shortfall from Aave, and the swap settles. One
 transaction contains the Aave withdrawal and both legs of the swap. It is live on Arbitrum mainnet
-and it has settled three real fills.
+and it has settled five real fills: three buy-side into the band, every one served by a
+just-in-time Aave withdrawal, plus two reverse fills that closed the position out.
 
 | | |
 |---|---|
@@ -15,7 +16,7 @@ and it has settled three real fills.
 | PartyVault | [`0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610`](https://arbiscan.io/address/0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610) (source verified) |
 | AaveV3Adapter | [`0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe`](https://arbiscan.io/address/0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe) (source verified) |
 | Program (PRG-R1 v3, measured) | `[deadline][concentrateGrowLiquidity2D][flatFeeAmountInXD 80bps][xycSwapXD][salt]` |
-| Mainnet fills | 3, all of them on the just-in-time path |
+| Mainnet fills | 5: 3 buy-side into the band, all three on the just-in-time path, plus 2 reverse fills at close-out ([FILLS.md](../FILLS.md)) |
 | Tests | 62 Foundry green (38 vault unit, 6 differential against OpenZeppelin ERC-4626, 13 adapter fork, 5 launch fork), plus `tsc --noEmit` and vitest on the band math |
 | 1inch contracts | official Aqua registry `0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a` and AquaSwapVMRouter `0x1111113Db0e0ef9D0E3A50d5f094a3a57a26C0DE`, both used unmodified |
 | Size | 10 USDC seed under a 200 USDC `maxTvl`, the manager's own capital |
