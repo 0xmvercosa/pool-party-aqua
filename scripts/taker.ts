@@ -204,7 +204,19 @@ async function main(): Promise<void> {
     amount: size,
     takerTraits: TakerTraits.default().with({ threshold: minOut }),
   });
+  // A fill that has to unpark from Aave mid-settlement costs materially more gas than one served
+  // from the hot buffer, and the estimate can land a hair under it (measured on mainnet: an
+  // estimate of ~362k against an actual need just above it, which reverted OutOfGas after the
+  // Aave withdrawal had already run). Arbitrum refunds what is not used, so pad and move on.
+  const gasEstimate = await client.estimateGas({
+    account,
+    to: AQUA_SWAP_VM_ROUTER,
+    data: swapData.toString() as `0x${string}`,
+  });
+  const gasLimit = (gasEstimate * 15n) / 10n;
+  info(`gas estimate ${gasEstimate}, sending with ${gasLimit} (50 percent headroom for the JIT path)`);
   const swapTx = await wallet.sendTransaction({
+    gas: gasLimit,
     to: AQUA_SWAP_VM_ROUTER,
     data: swapData.toString() as `0x${string}`,
   });

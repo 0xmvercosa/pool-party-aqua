@@ -286,6 +286,15 @@ Two ways to get there, both normal, neither insolvency:
 Say it to investors as "temporarily illiquid", never "protected" and never a loss (FE-R6). The same
 revert is what makes a fill fail rather than settle against liquidity the vault does not have.
 
+## 8b. Gas on a just-in-time fill
+
+A fill the vault serves from its hot buffer and a fill it serves by unparking from Aave inside
+the settlement transaction do not cost the same gas, and the second is the interesting one. The
+first successful mainnet JIT fill used 336k; a later one needed just above a 362k estimate and
+reverted OutOfGas after the Aave withdrawal had already executed, which wastes the gas and
+settles nothing. `scripts/taker.ts` and `scripts/unwind.ts` therefore estimate and then send with
+50 percent headroom. Arbitrum refunds the unused portion, so the padding is free.
+
 ## 9. Key handling
 
 | Key | Holder | Can do | Cannot do |

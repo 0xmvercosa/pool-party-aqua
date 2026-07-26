@@ -220,6 +220,12 @@ serve in USDC. Any WETH still held stays as residual inventory backing the lefto
 
 ## Things that will happen, and what they mean
 
+**A fill reverts OutOfGas after the Aave withdrawal already ran.** A fill served by a
+just-in-time unpark costs materially more gas than one served from the hot buffer, and the
+estimate can land a hair under it (measured on mainnet: an estimate around 362k against an
+actual need just above it). The scripts now send with 50 percent headroom, and Arbitrum refunds
+whatever is not used. If you see this on an older checkout, pull and retry.
+
 **A fill reverts with an arithmetic underflow.** The band ran out of depth. Aqua's `pull` reverts
 rather than over-committing, which is the no-bad-debt design: quote a smaller size or re-ship.
 

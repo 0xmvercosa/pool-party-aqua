@@ -106,7 +106,20 @@ async function main(): Promise<void> {
     amount: usdcIn,
     takerTraits: TakerTraits.default().with({ threshold: minOut }),
   });
-  const swapTx = await wallet.sendTransaction({ to: AQUA_SWAP_VM_ROUTER, data: swapData.toString() as `0x${string}` });
+  // Same headroom as the taker: settlement gas varies with the maker's path, and an estimate that
+  // lands under it reverts OutOfGas after real work has already happened.
+  const gasEstimate = await client.estimateGas({
+    account,
+    to: AQUA_SWAP_VM_ROUTER,
+    data: swapData.toString() as `0x${string}`,
+  });
+  const gasLimit = (gasEstimate * 15n) / 10n;
+  info(`gas estimate ${gasEstimate}, sending with ${gasLimit}`);
+  const swapTx = await wallet.sendTransaction({
+    to: AQUA_SWAP_VM_ROUTER,
+    data: swapData.toString() as `0x${string}`,
+    gas: gasLimit,
+  });
   const receipt = await client.waitForTransactionReceipt({ hash: swapTx });
   info(`swap ${swapTx} status=${receipt.status} gas=${receipt.gasUsed}`);
 
