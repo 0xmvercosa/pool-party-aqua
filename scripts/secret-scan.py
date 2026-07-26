@@ -27,6 +27,12 @@ _ARGS = [a for a in sys.argv[1:] if not a.startswith("-")]
 REPO = _ARGS[0] if _ARGS else "."
 
 # Exact literals that are public by construction. Each needs a reason.
+# Contexts in which a 32-byte hex string is a published identifier rather than a key.
+TX_CONTEXT_RX = re.compile(
+    r"arbiscan\.io|etherscan\.io|\btx\b|transaction|hash|block\s+\d|ship tx|deploy txs|Pass - Verified",
+    re.IGNORECASE,
+)
+
 ALLOWLIST = {
     "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80":
         "Anvil published dev account #0 private key, local fork only",
@@ -163,6 +169,10 @@ def scan():
         known = paths.get(sha, set())
         if known and all(SKIP_PATH.search(p) for p in known):
             continue
+        # The scanner's own source carries the patterns and the planted self-test literals.
+        # Scanning it finds itself, every time, and drowns a real finding in noise.
+        if known and all(p.endswith("scripts/secret-scan.py") for p in known):
+            continue
         raw = subprocess.run(
             ["git", "cat-file", "blob", sha], cwd=REPO, capture_output=True
         ).stdout
@@ -179,6 +189,15 @@ def scan():
                 if hit in ALLOWLIST:
                     allowlisted[hit] += 1
                     continue
+                if name == "evm-private-key-literal":
+                    line_start = text.rfind("\n", 0, m.start()) + 1
+                    line_end = text.find("\n", m.end())
+                    line = text[line_start: line_end if line_end != -1 else len(text)]
+                    # A 32-byte hex inside an explorer link, a markdown table of transactions or
+                    # a line that names it a tx/hash/block is a public identifier, not a key.
+                    if TX_CONTEXT_RX.search(line):
+                        allowlisted["published transaction hashes"] += 1
+                        continue
                 if ctx == "key-context":
                     line_start = text.rfind("\n", 0, m.start()) + 1
                     line_end = text.find("\n", m.end())
@@ -207,7 +226,7 @@ def main():
     if allowlisted:
         print("ALLOWLISTED (public by construction):")
         for lit, n in allowlisted.items():
-            print(f"  {n:3d}x  {lit[:26]}...  {ALLOWLIST[lit]}")
+            print(f"  {n:3d}x  {lit[:26]}...  {ALLOWLIST.get(lit, 'public on the block explorer')}")
         print()
 
     # Group findings so a repeated literal across many blobs reads as one item.
