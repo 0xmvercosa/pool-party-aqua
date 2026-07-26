@@ -25,8 +25,8 @@ forge test --root contracts
 ```
 
 The whole suite must be green, fork suites included. Those run against live Arbitrum state through
-the public endpoint by default (`ARBITRUM_RPC_URL` overrides it). 62 tests at the time of writing:
-38 vault unit, 6 differential against OpenZeppelin ERC-4626, 13 adapter fork, 5 launch fork.
+the public endpoint by default (`ARBITRUM_RPC_URL` overrides it). 66 tests at the time of writing:
+38 vault unit, 6 differential against OpenZeppelin ERC-4626, 13 adapter fork, 9 launch fork.
 
 `LaunchForkTest.test_launchSequence_seedParkShipTwoBandsThenDockAll` is a full rehearsal of section
 1 to 4 below against the **real** Aqua registry. Run it immediately before the live deploy: if it
@@ -57,7 +57,7 @@ Those assertions run during simulation, **before** anything is broadcast: a wron
 the run instead of publishing a mis-wired pair. It also refuses any chain other than Arbitrum One, a
 zero manager, and a `maxTvl` above the window cap.
 
-Record in `docs/VERIFIED.md` and in section 8 below: adapter address, vault address, both deploy tx
+Record in `docs/VERIFIED.md` and in the launch record (section 10): adapter address, vault address, both deploy tx
 hashes, and the block number.
 
 **If `--verify` fails** (Arbiscan rate limits are common):
@@ -73,6 +73,38 @@ forge verify-contract <ADDRESS> contracts/src/PartyVault.sol:PartyVault \
 Source publication is a hackathon requirement, not a nicety. Do not proceed to section 3 until both
 contracts read as verified on Arbiscan.
 
+### 1b. Verify the deployment ON CHAIN before spending a cent (mandatory gate)
+
+`Deploy.s.sol` asserts the wiring, but those `require`s run inside forge's **simulation**. They prove
+what the script intended to publish, not what a full node now actually serves. Close that gap before
+the seed:
+
+```bash
+export VAULT_ADDRESS=0x...          # from the deploy output
+forge script contracts/script/Ops.s.sol:VerifyDeployment --rpc-url "$ARBITRUM_RPC_URL"
+```
+
+Read-only, no broadcast, no signature needed. It reads every immutable back off live state and
+reverts if anything is wrong: that the adapter is bound to **this** vault (the one fact a simulation
+cannot establish), that both addresses hold code, that the router and registry are the gen-2 pair,
+that USDC, WETH, the price feed, the Aave pool, the underlying and the aToken are all the canonical
+addresses, that the owner is the manager who signed, that the decimals offset is 3, and that the
+vault is genuinely fresh: unseeded, no strategies, no shares.
+
+Expected output ends with `ON-CHAIN VERIFICATION PASSED` and `Safe to proceed to the seed step.`
+
+**A revert here means STOP.** Do not seed a vault whose wiring does not check out; redeploy instead.
+Because it insists the vault is unseeded, this is a one-time gate and not a health check: for
+ongoing state use `Smoke` (section 4).
+
+The same checks are callable directly, which is how the fork suite exercises them
+(`LaunchForkTest.test_verifyDeployment_*`, including the rejection paths):
+
+```bash
+cast call <VERIFIER> "check(address,address)" "$VAULT_ADDRESS" "$MANAGER_ADDRESS" \
+  --rpc-url "$ARBITRUM_RPC_URL"
+```
+
 ## 2. Seed and park (POO-1062 R3, VLT-R2)
 
 The manager must make the first deposit; every other deposit reverts `NotSeeded` until then.
@@ -86,7 +118,7 @@ cd contracts && forge script script/Ops.s.sol:SeedAndPark \
   --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager --sender "$MANAGER_ADDRESS"
 ```
 
-This approves, deposits, and parks in one signed run. Afterwards `Smoke` (section 5) must show a
+This approves, deposits, and parks in one signed run. Afterwards `Smoke` (section 4) must show a
 hot buffer of 10 USDC and roughly 190 USDC parked and already accruing.
 
 Expect the parked figure to be off by one USDC unit from a round number. That is Aave's
@@ -126,7 +158,11 @@ Read-only, safe to run at any time including mid-demo. Check:
 
 - `totalAssets` equals the seed, give or take Aave rounding
 - hot buffer and parked split match section 2
-- Aqua allowance is set for USDC and **zero for the router** (Aqua pulls, the router never does)
+- `adapter`, `router (Aqua app)` and `aqua registry` are the addresses from section 1b
+- all four allowance lines: `allow USDC -> Aqua` is set, and **`allow USDC -> router` and
+  `allow WETH -> router` are both zero**. Aqua pulls from the maker; the router never needs an
+  allowance, so anything non-zero there is a finding. The script prints a `WARNING` line of its own
+  if either is non-zero
 - both strategies listed with the USDC virtual balance you shipped and WETH at 0
 
 Then Track B's side: `quote()` at three sizes against each strategy, matching compiler expectations.
@@ -136,9 +172,36 @@ Do not announce anything until both halves agree.
 
 A roll is `dock(old)` plus `ship(new)`. Two accounting writes, no token movement, no slippage.
 
+**Step 1, dock the old band.** Take the `strategyHash` from the launch record in section 10:
+
 ```bash
-cd contracts && forge script script/Ops.s.sol:ShipBand ...   # after an execDock of the old hash
+export STRATEGY_HASH=0x...          # the hash being retired
+
+cd contracts && forge script script/Ops.s.sol:DockBand \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager --sender "$MANAGER_ADDRESS"
 ```
+
+Then ship the replacement with a fresh salt:
+
+```bash
+cd contracts && forge script script/Ops.s.sol:ShipBand \
+  --rpc-url "$ARBITRUM_RPC_URL" --broadcast --account manager --sender "$MANAGER_ADDRESS"
+```
+
+`DockBand` refuses a hash the vault does not have active, and re-reads the state afterwards to
+confirm it really went inactive. It needs no token argument: Aqua demands the complete shipped token
+list and the vault stores and replays it.
+
+Equivalent without the script, if you prefer a bare call:
+
+```bash
+cast send "$VAULT_ADDRESS" "execDock(bytes32)" "$STRATEGY_HASH" \
+  --rpc-url "$ARBITRUM_RPC_URL" --ledger
+```
+
+**Step 2, ship the replacement** exactly as in section 3, with a program whose salt has changed.
+
+To retire everything at once, use `EmergencyStop` (section 7) rather than docking one by one.
 
 **The salt must change.** Aqua marks a docked hash with a permanent sentinel, so re-shipping the
 same order bytes reverts forever. `LaunchForkTest.test_dockedHashIsDeadOnTheRealRegistry` proves
@@ -248,6 +311,7 @@ Filled in during the live run.
 | PartyVault | `0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610` |
 | Deploy txs | adapter `0x3b2b729700b60f14d1b340382d2ade637161662656d933419b26647068a855ae` (block 487662396), vault `0x5b77b43198e12e0917a99d73c6238ee16b9531a429769b803daf53faf528263a` (block 487662407), total 0.0000686 ETH |
 | Arbiscan verification | both Pass - Verified via Etherscan API V2 (2026-07-25) |
+| On-chain verification (section 1b) | `VerifyDeployment` green: adapter and vault bound to each other, owner and router as configured |
 | maxTvl at launch | 200 USDC (seed 10 USDC per re-amended D3) |
 | Seed tx / amount | `0x0cfc605e070923cbe816b1656d76fd2889cc209de21105742ee45e380d22bbf3` / 10 USDC (10e9 shares) |
 | Park tx / amount | `0x05383f15007141f67a8c7c8528390e8fb3f9b0e3ffc80e89e4b9d25dfc2c4787` / 9.5 USDC to Aave, 0.5 hot |
