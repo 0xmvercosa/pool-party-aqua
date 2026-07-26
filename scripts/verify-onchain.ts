@@ -19,6 +19,7 @@ import {
   DEAD_GEN1_ROUTER,
   REFERENCE_SHIP_TX,
   GEN2_FIRST_ACTIVITY_BLOCK,
+  PARTY_VAULT,
 } from "./lib/addresses.ts";
 import { mainnetClient } from "./lib/clients.ts";
 import { fail, heading, info, pass } from "./lib/format.ts";
@@ -218,19 +219,37 @@ function verifyRoundTrip(ships: LiveShip[]): void {
 }
 
 async function verifyMakersAreEoas(ships: LiveShip[]): Promise<void> {
-  heading("4. Are the gen-2 makers EOAs? (supports the first pooled-custody Aqua maker claim)");
+  heading("4. Maker shapes on the gen-2 registry (the pooled-custody claim)");
 
+  // Our own vault is now one of the makers, which is the whole point: before this project every
+  // maker on the live registry was an EOA, so pooled custody did not exist. The check therefore
+  // splits the set instead of asserting a blanket "all EOAs", which our own launch falsified.
   const makers = [...new Set(ships.map((s) => s.maker.toLowerCase()))];
+  const ours = PARTY_VAULT.toLowerCase();
+  const others = makers.filter((m) => m !== ours);
+
+  let contractsAmongOthers = 0;
   for (const maker of makers) {
     const code = await client.getCode({ address: maker as `0x${string}` });
     const isEoa = code === undefined || code === "0x";
-    info(`${maker}: ${isEoa ? "EOA (no code)" : `contract (${(code.length - 2) / 2} bytes of code)`}`);
+    const size = isEoa ? 0 : (code.length - 2) / 2;
+    const label = maker === ours ? "OURS, PartyVault" : "third party";
+    info(`${maker}: ${isEoa ? "EOA (no code)" : `contract (${size} bytes)`}  [${label}]`);
+    if (maker !== ours && !isEoa) contractsAmongOthers += 1;
   }
-  const codes = await Promise.all(
-    makers.map((m) => client.getCode({ address: m as `0x${string}` })),
+
+  check(
+    contractsAmongOthers === 0,
+    `all ${others.length} third-party gen-2 makers are EOAs (no other pooled-custody maker exists)`,
   );
-  const allEoa = codes.every((c) => c === undefined || c === "0x");
-  check(allEoa, `all ${makers.length} gen-2 makers are EOAs (no pooled-custody maker exists yet)`);
+
+  const ourCode = await client.getCode({ address: PARTY_VAULT });
+  const weAreDeployed = ourCode !== undefined && ourCode !== "0x";
+  const weAreAMaker = makers.includes(ours);
+  check(
+    weAreDeployed && weAreAMaker,
+    `our PartyVault (${PARTY_VAULT}) is a live gen-2 maker AND a contract: the first pooled-custody maker on this registry`,
+  );
 }
 
 function verifyFeeVariants(): void {

@@ -9,7 +9,7 @@ There is no address "discrepancy": two complete, parallel generations are deploy
 | | Aqua registry | AquaSwapVMRouter | EIP-712 domain | Activity |
 |---|---|---|---|---|
 | Gen 1 (DEAD, do not use) | `0x499943e74fb0ce105688beee8ef2abec5d936d31` | `0x8fdd04dbf6111437b44bbca99c28882434e0958f` | ("AquaSwapVMRouter", "1.0.0") | 43 ships, 579 pulls, last ~2026-04 |
-| **Gen 2 (LIVE, use this)** | `0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a` | `0x1111113Db0e0ef9D0E3A50d5f094a3a57a26C0DE` | ("1inch SwapVM v1.0", "1.0.2") | 4 ships (2026-07-20/21), 14 pulls, last 2026-07-24 |
+| **Gen 2 (LIVE, use this)** | `0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a` | `0x1111113Db0e0ef9D0E3A50d5f094a3a57a26C0DE` | ("1inch SwapVM v1.0", "1.0.2") | 4 third-party ships (2026-07-20/21) plus our 2 (2026-07-25); 14 pulls before our launch |
 
 Each router's `AQUA()` getter points at its own registry (pairs are fixed).
 
@@ -21,7 +21,7 @@ Each router's `AQUA()` getter points at its own registry (pairs are fixed).
 
 ### Opcode table: MEASURED, supersedes the earlier estimate (POO-1058, 2026-07-25)
 
-The pre-seeded table in this file was **off by one across the board**. Measured truth: `@1inch/swap-vm-sdk@0.3.0`'s `instructions.aquaInstructions` array mirrors the deployed array **exactly**. Proof: all four live gen-2 ships decode through `AquaProgramBuilder.decode()` and re-`build()` to byte-identical program bytes. A one-off table would have produced garbage args or thrown on the first instruction.
+The pre-seeded table in this file was **off by one across the board**. Measured truth: `@1inch/swap-vm-sdk@0.3.0`'s `instructions.aquaInstructions` array mirrors the deployed array **exactly**. Proof: all four pre-existing gen-2 ships decode through `AquaProgramBuilder.decode()` and re-`build()` to byte-identical program bytes. A one-off table would have produced garbage args or thrown on the first instruction.
 
 | Opcode | Instruction | | Opcode | Instruction |
 |---|---|---|---|---|
@@ -43,7 +43,7 @@ Reproduce: `pnpm verify:onchain`.
 
 1. `safeBalances` never reads the ERC-20 wallet balance: a vault with a small hot buffer can quote the full sleeve; only `pull` at settlement needs real tokens. The 90/10 premise holds.
 2. The `preTransferOut` maker hook fires BEFORE `AQUA.pull` in Aqua mode: JIT Aave withdrawal inside the settlement tx works. **PROVEN on the fork (POO-1058, trap A)**, with the exact signature measured; see "Maker hook: the measured interface" below.
-3. **Fee direction trap**: `AquaProtocolFeeAmountIn`/`protocolFeeAmountInXD` charge on **tokenIn** and pull DURING `runLoop`, before settlement transfers. On a buy band tokenIn is WETH; a WETH-at-0 ship makes the fill revert. See PRG-R7 (v2) for the v1 resolution. **CORRECTION (POO-1058):** PRG-R7 v2 justified this partly with "confirmed [...] by all 4 live programs avoiding it". That is false. **All four live gen-2 programs USE `aquaProtocolFeeAmountInXD`** (0x1c, fee 125000 or 25000 of 1e9, to `0x8063d4faf54bf8c898dc6ddc689c76ab12b4614a`). They can afford to: they ship both sides with non-zero amounts, so the tokenIn pull always has balance. Our WETH-at-0 buy band is the case that breaks. The rule's conclusion stands; only its evidence was wrong.
+3. **Fee direction trap**: `AquaProtocolFeeAmountIn`/`protocolFeeAmountInXD` charge on **tokenIn** and pull DURING `runLoop`, before settlement transfers. On a buy band tokenIn is WETH; a WETH-at-0 ship makes the fill revert. See PRG-R7 (v2) for the v1 resolution. **CORRECTION (POO-1058):** PRG-R7 v2 justified this partly with "confirmed [...] by all 4 live programs avoiding it". That is false. **All four pre-existing gen-2 programs USE `aquaProtocolFeeAmountInXD`** (0x1c, fee 125000 or 25000 of 1e9, to `0x8063d4faf54bf8c898dc6ddc689c76ab12b4614a`). They can afford to: they ship both sides with non-zero amounts, so the tokenIn pull always has balance. Our WETH-at-0 buy band is the case that breaks. The rule's conclusion stands; only its evidence was wrong.
 4. Ship bytes = the **ABI-encoded Order struct** (program inside the last slice of `order.data`), not the bare program. `strategyHash = keccak256(order bytes)`.
 5. A docked strategyHash is dead forever (`_DOCKED`, not 0): every roll MUST change the salt.
 6. Aqua mode enforces `receiver == maker` (the vault receives directly) and forbids WETH unwrap.
@@ -51,7 +51,7 @@ Reproduce: `pnpm verify:onchain`.
 
 ## Live gen-2 program shape (measured, POO-1058)
 
-All four ships, decoded. This is what a program that actually works on the deployed router looks like:
+All four pre-existing third-party ships, decoded. This is what a program that actually works on the deployed router looks like:
 
 | Ship | Maker | Program |
 |---|---|---|

@@ -1,6 +1,6 @@
 # FILLS: settlement proofs
 
-Every fill executed against an Active Reserve strategy, appended by `pnpm taker` as it runs.
+Every fill settled against an Active Reserve strategy on Arbitrum mainnet: three buy-side fills appended by `pnpm taker` as they ran, plus the two reverse fills from the close-out.
 
 
 ## What these fills are, and what they are not
@@ -18,11 +18,19 @@ In production the premium is paid by arbitrageurs when price enters the band, an
 routed flow once aggregation integrates Aqua. During this window the external, real yield is
 the Aave carry, which accrues every block whether anyone fills or not.
 
-| # | When (UTC) | Band (strategyHash) | Size in | Size out | Implied px | JIT | Tx |
-|---|---|---|---|---|---|---|---|
+| # | When (UTC) | Direction | Band (strategyHash) | Size in | Size out | Implied px | JIT | Tx |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2026-07-25 19:34:37 | BUY (taker sells WETH) | demo `0x77097fd3...` | 0.0003 WETH | 0.556382 USDC | $1854.61 | yes | [0xbc64ec2d...](https://arbiscan.io/tx/0xbc64ec2db39c6a8f718487268e4195c63e472f0ad0ae1f46e09919a1a9c5bb83) |
+| 3 | 2026-07-25 19:43:19 | BUY | production `0xafbd59da...` | 0.00002 WETH | 0.035137 USDC | $1756.85 | yes | [0x22275ab5...](https://arbiscan.io/tx/0x22275ab56618064191e0bbcff058389722a3a1c9d54b14a89c5c0e10316a89f1) |
+| 4 | 2026-07-25 ~21:30 | SELL, close-out | demo `0x77097fd3...` | 0.55 USDC | 0.000291745 WETH | $1885.19 | n/a | [0x11e946b3...](https://arbiscan.io/tx/0x11e946b3927e3c8e0bb6dca665faab1892dd9e2f2c121b4d70015f59b373fdfc) |
+| 5 | 2026-07-25 ~21:32 | SELL, close-out | production `0xafbd59da...` | 0.035 USDC | 0.0000196 WETH | $1785.71 | n/a | [0x22932d2d...](https://arbiscan.io/tx/0x22932d2dc05af9531d284cb684433ff78605965b0b22785cd4295cb9b5127c8f) |
 
-<!-- strategy: demo 0x77097fd33011a87bf7a5be80dde5043f28bfaa130758ab77363133f0120810cf on mainnet -->
-| 1 | 2026-07-25 19:34:37 | demo `0x77097fd3...` | 0.0003 WETH | 0.556382 USDC | $1854.61 | yes | [0xbc64ec2d...](https://arbiscan.io/tx/0xbc64ec2db39c6a8f718487268e4195c63e472f0ad0ae1f46e09919a1a9c5bb83) |
+Rows 1 to 3 are the buy side: the taker sold WETH into the band and the vault paid USDC, every
+one of them served by a just-in-time Aave withdrawal. Rows 4 and 5 are the close-out, run in
+reverse (`scripts/unwind.ts`) so the vault could be redeemed in USDC: there the taker pays USDC
+and the vault delivers WETH from inventory, which is why the JIT column does not apply. The
+close-out rows were reconstructed from chain after the fact, which is why their timestamps are
+approximate; the transaction hashes are exact.
 
 ## The JIT trace, decoded (fill #1)
 
@@ -50,7 +58,4 @@ VLT-R9 behaving as designed. Until the instant that transaction executed, every 
 
 That is the claim in one line: **capital earns yield until the exact second it buys the dip.**
 Not a design intention, a decoded mainnet transaction.
-| 2 | 2026-07-25 19:42:20 | demo `0x77097fd3...` | 0.00002 WETH | 0.037055 USDC | $1852.75 | yes | [0x94068a6b...](https://arbiscan.io/tx/0x94068a6b87198ba8190830542cf91bcfab6800be6f33efac8ac6012b8f9e7a2d) |
 
-<!-- strategy: unlabelled 0xafbd59da3040256990b3584b56930acd0befc0ee1ccbfa7bc87b0c7496818260 on mainnet -->
-| 3 | 2026-07-25 19:43:19 | production `0xafbd59da...` | 0.00002 WETH | 0.035137 USDC | $1756.85 | yes | [0x22275ab5...](https://arbiscan.io/tx/0x22275ab56618064191e0bbcff058389722a3a1c9d54b14a89c5c0e10316a89f1) |

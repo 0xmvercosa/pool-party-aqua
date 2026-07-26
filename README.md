@@ -1,95 +1,122 @@
-# Pool Party x 1inch Aqua (Hackathon): on-chain side
+# Active Reserve: a lending-backed market maker on 1inch Aqua
 
-**Active Reserve**: the first product of a new class of Pool Party managed strategies built on 1inch Aqua + SwapVM, live on Arbitrum. ~90% of vault capital earns Aave v3 yield at all times; ~10% quotes a buy-the-dip band below spot as a SwapVM program in Aqua mode. A maker hook withdraws from Aave inside the settlement transaction, so parked capital is quotable liquidity: capital earns interest until the exact second it buys the dip.
+A pooled vault that keeps about 95 percent of its USDC earning Aave v3 supply yield behind a
+5 percent hot buffer, registers a sleeve worth about 10 percent of TVL with the official 1inch
+Aqua registry as virtual balance, and quotes a buy-the-dip band below spot as a SwapVM program.
+When a fill lands, a maker hook withdraws from Aave **inside the settlement transaction**, so the
+parked capital is quotable liquidity the whole time.
 
-> **Active Reserve**: An always-earning reserve that buys the dip. Capital earns Aave lending yield every block and is deployed automatically the instant the market dips into the manager's buy band, purchasing ETH below market price. Objective: accumulate ETH at a discount while never sitting idle.
+> **Active Reserve.** An always-earning reserve that buys the dip. Capital earns Aave lending
+> yield every block and is deployed automatically the instant the market dips into the manager's
+> buy band, purchasing ETH below market price. Objective: accumulate ETH at a discount while
+> never sitting idle.
 
-> Hackathon deliverable. Deployed under hard caps with our own capital; likely docked/paused after the event pending audit and licensing. Not investment advice; nothing here is a live retail product.
+Live on Arbitrum One, settling real fills. Built for the 1inch Aqua and SwapVM hackathon.
+
+## Judges start here
+
+**[docs/hackathon/](./docs/hackathon/README.md)** is the review package: what was built, the
+as-built architecture, every integration, the requirement scorecard with transaction links, the
+references, the roadmap, the process, and the commit history explained.
+
+| | |
+|---|---|
+| Network | Arbitrum One (chainid 42161) |
+| PartyVault | [`0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610`](https://arbiscan.io/address/0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610), source verified |
+| AaveV3Adapter | [`0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe`](https://arbiscan.io/address/0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe), source verified |
+| Mainnet fills | 5 (3 buy-side into the band, all three served by a just-in-time Aave withdrawal, plus 2 reverse fills at close-out) |
+| Tests | 62 Foundry (unit, an OpenZeppelin ERC-4626 differential suite, and two Arbitrum fork suites) |
+| Program | `[deadline][concentrateGrowLiquidity2D][flatFeeAmountInXD 80bps][xycSwapXD][salt]`, measured against the deployed router |
+| Official contracts | Aqua registry `0x1111113CCf...a90a` and AquaSwapVMRouter `0x1111113Db0...C0DE`, both unmodified |
+
+## The single transaction that is the whole product
+
+[`0xbc64ec2db39c6a8f718487268e4195c63e472f0ad0ae1f46e09919a1a9c5bb83`](https://arbiscan.io/tx/0xbc64ec2db39c6a8f718487268e4195c63e472f0ad0ae1f46e09919a1a9c5bb83)
+
+The taker sold 0.0003 WETH into the band. The vault owed 556,382 USDC and its wallet held
+500,000, so inside that one transaction it burned aUSDC to withdraw exactly the 56,382 shortfall
+from Aave, Aqua pulled the USDC to the taker, and the WETH was pushed back into the vault. Until
+that instant, every one of those units was earning interest. The decoded log list is in
+[docs/FILLS.md](./docs/FILLS.md).
+
+## Verify it without spending anything
+
+```bash
+git clone https://github.com/0xmvercosa/pool-party-aqua.git && cd pool-party-aqua && git submodule update --init --recursive && pnpm install
+```
+
+```bash
+forge test --root contracts
+```
+
+62 tests. The fork suites run against live Arbitrum through a public endpoint and re-verify every
+address in `AddressBook.sol` against the chain, then rehearse the entire launch sequence against
+the real Aqua registry.
+
+```bash
+ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc pnpm verify:onchain
+```
+
+Read-only, no key, no money. It proves which Aqua generation is live, decodes the pre-existing
+production programs and round-trips them through our builder to byte-identical bytes, shows the
+opcode table we measured, and checks the maker shapes on the registry.
+
+```bash
+pnpm fork:all
+```
+
+Brings up its own throwaway Arbitrum fork and runs the full rehearsal, the seven trap proofs and
+the taker, including the just-in-time path.
+
+To reproduce the mainnet run end to end, follow
+[docs/05_DEMO_WALKTHROUGH.md](./docs/05_DEMO_WALKTHROUGH.md).
 
 ## What lives where
 
-**This repo** (on-chain side): `contracts/` Foundry workspace (PartyVault, AaveV3Adapter, PartyRouter), deploy + fork-rehearsal scripts, canonical docs (`docs/`), and the submission artifacts (`VERIFIED.md`, `RUNBOOK.md`, `FILLS.md` as they land).
-
-**pool-party-frontend, branch `feat/aqua-poo-1057-hackathon`** (app side, separate private repo): investor/manager surfaces plus the Next server side: an internal API module (`src/lib/aqua/api/`) that plays the backend's role (strategy persistence on a Postgres mirror + on-chain orchestration), thin server actions, and the keeper/taker scripts.
-
-## Start here
-
-- `docs/00_ARCHITECTURE_AND_PLAN.md`: full architecture, custody model, fees, phased plan (read the addenda block first)
-- `docs/01_BUSINESS_RULES.md`: numbered, versioned business rules (single source of truth)
-- `docs/02_WORKPLAN.md`: two-homes layout, issue map, parallel-session coordination, compressed schedule
-- Linear: project "Aqua Strategies (1inch Hackathon)", epic POO-1057
-
-## On-chain surface
-
-| Contract | What it is |
+| Path | What it is |
 |---|---|
-| `contracts/src/PartyVault.sol` | The Aqua maker. Pooled USDC, internal non-transferable share ledger with ERC-4626 math, ships and docks bands, answers the settlement hook. |
-| `contracts/src/AaveV3Adapter.sol` | The carry venue behind the sleeve. Supplies to Aave v3 and withdraws exact amounts, including from inside a fill. |
-| `contracts/src/AddressBook.sol` | Every canonical Arbitrum address, each with how it was verified. |
-| `abis/` | Committed ABI artifacts plus a consumption guide, so the TypeScript side never imports across repositories. |
-| `RUNBOOK.md` | Deploy, seed, ship, roll, emergency stop, key handling, and the "temporarily illiquid" state explained honestly. |
+| `contracts/src/PartyVault.sol` | The Aqua maker: pooled USDC, a non-transferable internal share ledger with OpenZeppelin ERC-4626 math, ships and docks bands, answers the settlement hook |
+| `contracts/src/AaveV3Adapter.sol` | The carry venue: supplies to Aave v3 and withdraws exact amounts, including from inside a fill |
+| `contracts/src/AddressBook.sol` | Every canonical Arbitrum address with how it was verified |
+| `contracts/script/` | `Deploy`, and the ops set: `SeedAndPark`, `ShipBand`, `DockBand`, `Smoke`, `VerifyDeployment`, `EmergencyStop` |
+| `scripts/` | The TypeScript side: program compiler entry (`build-orders`), `taker`, `status`, `unwind`, the fork rehearsals, and `verify-onchain` |
+| `docs/hackathon/` | The judge package |
+| `docs/VERIFIED.md` | Measured ground truth: addresses, the opcode table, the maker hook, the traps |
+| `RUNBOOK.md` | Operations: deploy, seed, ship, roll, close out, emergency stop, key handling |
 
-```bash
-forge test --root contracts    # unit suite plus Arbitrum fork suites
-```
+The strategy compiler and the server module that the wider Pool Party product will use live in
+the private product repository on the branch `feat/aqua-poo-1057-hackathon`. Everything needed to
+verify every claim in this submission is in this public repository.
 
-The fork suites run against live Arbitrum state through a public endpoint by default, so they need
-no setup. They re-verify every address in `AddressBook` against the chain, and they rehearse the
-whole launch sequence (seed, park, ship both bands, read the virtual balances back, dock, revoke,
-redeem) against the **real** Aqua registry.
+## What is deliberately not shipped
 
-## What is deliberately not shipped in this window
+The window was 20 hours, so scope was cut on purpose and the cuts are listed rather than hidden.
+Each one is designed and specified in [docs/01_BUSINESS_RULES.md](./docs/01_BUSINESS_RULES.md),
+with the reasoning in [docs/hackathon/06_ROADMAP.md](./docs/hackathon/06_ROADMAP.md).
 
-The 20-hour window scope was cut on purpose, with Murilo's approval, and the cuts are listed here
-rather than hidden. Each is designed and specified in `docs/01_BUSINESS_RULES.md`; none is a gap we
-failed to notice.
-
-| Designed, not shipped | Rule | What we do instead in the window |
+| Designed, not shipped | Rule | What runs instead |
 |---|---|---|
-| In-vault Chainlink staleness gate | VLT-R4 | NAV still values WETH at Chainlink and rejects a non-positive answer; the 90-minute staleness bound is watched off chain by the status script and the manager |
-| Redemption lockup | VLT-R6 | lockup is 0 days for the event anyway (D4) |
-| Separate KEEPER role | VLT-R7 | a single immutable owner; every operation is a deliberate manual action from the CLI |
-| High-water-mark performance fee | VLT-R8 | platform economics documented, not charged in-window |
-| `maxPerShip` and token allowlists | VLT-R7, VLT-R10 | `maxTvl` plus a manager-only seed of 50 to 200 USD; the Aqua app is forced to the canonical router, so shipped liquidity cannot be pointed elsewhere |
-| PartyRouter with the oracle instruction wired | RTR-\* | manager watch plus `dockAll` is the price sentinel, stated as such in the runbook |
-| Keeper loop (roll, sentinel, re-park) | KPR-\* | manual roll and manual re-park; `dockAll` is the safety |
-| Manager UI | POO-1068 | the CLI scripts are the manager demo |
+| PartyRouter with `OraclePriceAdjuster` wired (the modified-SwapVM axis) | RTR | The manager watch plus `dockAll` is the price sentinel, stated as such in the runbook |
+| In-vault Chainlink staleness gate | VLT-R4 | NAV values WETH at Chainlink and rejects a non-positive answer; the 90-minute bound is watched off chain |
+| Redemption lockup | VLT-R6 | Lockup is 0 days for the event anyway |
+| Separate keeper role and keeper loop | VLT-R7, KPR | One immutable owner; every operation is a deliberate manual action from the CLI |
+| High-water-mark performance fee | VLT-R8 | Platform economics documented, not charged in-window |
+| `maxPerShip` and token allowlists | VLT-R7, VLT-R10 | `maxTvl` plus a manager-only seed; the Aqua app is forced to the canonical router |
+| Manager UI | POO-1068 | The CLI scripts are the manager surface |
 
-Fills during the event are generated by our own taker and are labelled as self-directed settlement
-proofs everywhere. A band that bids below spot cannot win arbitrage by construction; in production
-the premium is paid by arbitrageurs when price actually enters the band. The Aave yield shown
-accruing is external and real today.
+Fills during the event were generated by our own taker and are labelled self-directed settlement
+proofs everywhere they appear. A band that bids below spot cannot win arbitrage by construction:
+it becomes the best bid only when the market falls into it. The external, real yield in the
+window is the Aave carry, which accrues every block whether anyone fills or not.
 
-## Hackathon qualification
+## Licensing and attribution
 
-1. Official Aqua + official AquaSwapVMRouter used unmodified for the core product. PartyRouter, the explicitly-allowed modified SwapVM redeploy that would wire the OraclePriceAdjuster instruction, is designed and specified but was cut from the 20-hour window; see the table above.
-2. On-chain token transfers demonstrated with real fills on Arbitrum mainnet (see `docs/FILLS.md` when populated).
-3. Phased commit history, PR per Linear issue.
+1inch Aqua and SwapVM are source-available under Degensoft licenses, not OSI open source, and
+non-commercial use including hackathons is explicitly free. No upstream source is vendored here:
+our contracts restate only the ABI shapes they call and each cites the upstream tag it was
+transcribed from (`aqua` v1.0.0, `swap-vm` v1.0.1). Our own code is MIT, see [LICENSE](./LICENSE).
+Attribution, quoted verbatim as the upstream license requires: "Aqua — © Degensoft Ltd 2025".
+Full detail in [docs/hackathon/05_REFERENCES.md](./docs/hackathon/05_REFERENCES.md).
 
-## Continuity and what is new
-
-Per the hackathon continuity rule: everything in THIS repository was created during the event window (history starts 2026-07-25, pushed continuously). The demo also shows the pre-existing Pool Party investor app (private product repo `pool-party-v2-frontend`, in development since May 2026); the hackathon-new work there is confined to the branch `feat/aqua-poo-1057-hackathon` (Aqua server module, Drizzle schema, Active Reserve surfaces) and is documented in `docs/03_EXECUTION_PLAN.md`. All on-chain-facing code (contracts, deploy, rehearsal, taker, status report) lives in this public repo so every claim is verifiable.
-
-## Licensing and security
-
-1inch Aqua and SwapVM are source-available under Degensoft licenses (not OSS). No upstream source is vendored into this repository: our contracts restate only the ABI shapes they call, and each such file cites the upstream tag it was transcribed from (`aqua` v1.0.0, `swap-vm` v1.0.1). Should PartyRouter ship after the window, its source is published under the license's copyleft terms. Review the upstream licenses before any commercial use. Our code in this repository is MIT licensed (see LICENSE). Attribution, quoted verbatim as the upstream license requires it: "Aqua — © Degensoft Ltd 2025". No secrets and no production data are ever committed to this repo; env values live only in local `.env` files.
-
-## Running the rehearsals
-
-Every rehearsal needs an Arbitrum fork. Use the `fork:` scripts, which start a **fresh** one
-and tear it down afterwards:
-
-```bash
-pnpm fork:all        # full loop + traps + taker, on one throwaway fork
-pnpm fork:rehearse   # approve -> ship -> quote -> swap -> dock
-pnpm fork:traps      # the seven guardrails, each demonstrated on-chain
-pnpm fork:taker      # reconstruct from chain -> quote -> fill -> JIT fill
-pnpm verify:onchain  # read-only against Arbitrum mainnet, no fork, no tx
-```
-
-Do not leave a fork running between sessions. Anvil pins the fork block at startup and
-fetches state lazily; public Arbitrum RPCs are not archive nodes, so once that block ages out
-of retention the fork starts failing with `-32000: metadata is not found` on any account it
-has not already cached. A long-lived fork is a fork that is about to break in a way that
-looks like a bug in our code. The bare `pnpm rehearse` / `rehearse:traps` / `rehearse:taker`
-scripts assume you have already started one yourself.
+No secrets and no production data are committed to this repository. `pnpm scan:secrets` runs a
+reproducible scan with no install step.

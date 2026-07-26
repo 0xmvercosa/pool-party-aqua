@@ -1,5 +1,10 @@
 # Aqua Strategies: Architecture and Phased Implementation Plan
 
+> **Planning artifact.** Written before or during the build. It is kept as process evidence, not
+> as a description of what shipped. Where it disagrees with the code, with `docs/VERIFIED.md` or
+> with the judge package in `docs/hackathon/`, those win. Start at
+> [docs/hackathon/README.md](./hackathon/README.md).
+
 **Date:** 2026-07-25
 **Status:** Approved direction (Murilo). Implementation not started. Linear epic: [POO-1057](https://linear.app/yeildbay/issue/POO-1057).
 **Context:** 1inch Aqua/SwapVM hackathon. Target is a real production deployment on Arbitrum, not a demo toy.

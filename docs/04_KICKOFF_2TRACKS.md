@@ -1,5 +1,10 @@
 # Kickoff: 2 parallel tracks, 20-hour window
 
+> **Planning artifact.** Written before or during the build. It is kept as process evidence, not
+> as a description of what shipped. Where it disagrees with the code, with `docs/VERIFIED.md` or
+> with the judge package in `docs/hackathon/`, those win. Start at
+> [docs/hackathon/README.md](./hackathon/README.md).
+
 **Date:** 2026-07-25. Clock starts at kickoff (T+0).
 **Staffing:** 2 workers (members or agent sessions): **Track A (contracts)** and **Track B (TypeScript rails)**. Murilo is the manager-key holder and approver (not counted as a track).
 **Read before writing any code:** [VERIFIED.md](./VERIFIED.md) (addresses, pinned source, confirmed traps), [01_BUSINESS_RULES.md](./01_BUSINESS_RULES.md) (rules v2 + window-cut notes), [03_EXECUTION_PLAN.md](./03_EXECUTION_PLAN.md) section 6 (cuts in force), your Linear issue AND its latest comments (latest comment supersedes the body).

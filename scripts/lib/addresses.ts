@@ -42,4 +42,13 @@ export const REFERENCE_SHIP_TX =
   "0xa966fc93f4519646528f082bce8640aa69146c9be9f77e4249ff446eba0fc166" as const;
 
 /** Block the gen-2 registry first saw activity; bounds log scans on public RPCs. */
+/**
+ * Our own deployed maker on the gen-2 registry (POO-1062, 2026-07-25). Verified on Arbiscan.
+ * Kept here so the ground-truth verifier can tell OUR ships apart from the pre-existing ones.
+ */
+export const PARTY_VAULT = "0xec870a6A9E8EE41B349FD0766b8f295D6EDC6610" as const;
+export const AAVE_V3_ADAPTER = "0x6d409fF8578D017AddDB2e9Ad0848D8F0A65aBAe" as const;
+/** Block of our first ship: everything at or after it on the gen-2 registry is ours. */
+export const PARTY_VAULT_FIRST_SHIP_BLOCK = 487665802n;
+
 export const GEN2_FIRST_ACTIVITY_BLOCK = 484000000n;
