@@ -1,4 +1,24 @@
-# Active Reserve: a lending-backed market maker on 1inch Aqua
+# Pool Party Aqua
+
+## Cash+ continuity release
+
+Cash+ is Pool Party's investment strategy for business dollar reserves. The contracts combine Aave lending with bounded stablecoin conversions through official 1inch Aqua and SwapVM deployments. The [dedicated frontend](https://github.com/PoolPartyLabs/pool-party-v2-frontend/tree/feat/cash-plus-demo) currently demonstrates the product with an explicitly simulated UI.
+
+- [Cash+ contract architecture](contracts/src/cashplus/README.md)
+- [Complete Rabby deployment guide, in Portuguese](docs/cash-plus-deploy.pt-BR.md)
+- [Local deployment assistant](scripts/cash-plus-deploy.ts): prepare and verify three transactions, then sign each in Rabby. The server never signs or broadcasts transactions.
+
+Cash+ has **not been deployed to mainnet** as part of this delivery. Its deployment requires a **permanently locked 1,000 USDC seed**, ETH for Arbitrum gas and explicitly selected immutable governance, keeper and guardian addresses. The deployment guide explains these requirements, recovery and the separate work needed to operate the strategy after deployment.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm deploy:cash-plus:check
+pnpm deploy:cash-plus:rehearse
+```
+
+The check compiles and encodes offline. The rehearsal owns an isolated local fork and uses synthetic balances; it does not send transactions to Arbitrum. To open the local signing assistant, configure the three role addresses as described in the guide and run `pnpm deploy:cash-plus`.
+
+## Active Reserve: a lending-backed market maker on 1inch Aqua
 
 A pooled vault that keeps about 95 percent of its USDC earning Aave v3 supply yield behind a
 5 percent hot buffer, registers a sleeve worth about 10 percent of TVL with the official 1inch

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cash+ · Deploy with Rabby</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+  <header><a class="brand" href="/">POOL PARTY <span>Cash+</span></a><span class="badge">LOCAL DEPLOYMENT ASSISTANT</span></header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">ARBITRUM ONE · CHAIN 42161</p><h1>Bring Cash+ onchain.</h1><p>Review each transaction here. Sign it in Rabby. Keep a verified record of every step.</p></div><button id="connect">Connect Rabby</button></div>
+    <section class="wallet card"><div><span class="label">DEPLOYMENT WALLET</span><code id="owner">Loading…</code><span id="wallet-status" class="muted">Not connected</span></div><div><span class="label">ARBITRUM ETH</span><strong id="eth">—</strong></div><div><span class="label">ARBITRUM USDC</span><strong id="usdc">—</strong></div><button id="refresh" class="secondary">Refresh</button></section>
+    <section class="steps" aria-label="Deployment progress">
+      <div id="step-factory" class="card step"><span class="number">1</span><div><h2>Deploy factory</h2><p>Creates CashPlusDeploymentFactory.</p><span class="status">Not started</span></div></div>
+      <div id="step-approval" class="card step"><span class="number">2</span><div><h2>Approve seed</h2><p>Exactly 1,000 USDC to the factory.</p><span class="status">Not started</span></div></div>
+      <div id="step-vault" class="card step"><span class="number">3</span><div><h2>Deploy & seed Cash+</h2><p>Vault and six components, atomically.</p><span class="status">Not started</span></div></div>
+    </section>
+    <div class="columns"><section class="card review">
+      <p class="eyebrow">TRANSACTION REVIEW</p><h2 id="review-title">Ready when you are.</h2>
+      <p id="review-help" class="muted">Prepare the next step to validate protocol addresses, simulate the exact transaction and estimate gas. Preparation does not send a transaction.</p>
+      <div id="review-content" hidden><dl id="review-fields"></dl><details><summary>Exact unsigned transaction and configuration</summary><pre id="review-json"></pre></details></div>
+      <div class="acknowledgements">
+        <label><input type="checkbox" id="seed-ack"><span>I understand that the <strong>1,000 USDC sponsor seed is permanently locked</strong>. The sponsor receives no redeemable shares.</span></label>
+        <label><input type="checkbox" id="roles-ack"><span>I reviewed the governance, keeper and guardian addresses. These roles are <strong>immutable</strong>; changing their addresses requires a new vault.</span></label>
+      </div>
+      <div class="actions"><button id="prepare">Prepare next step</button><button id="sign" hidden>Confirm transaction in Rabby</button><button id="cancel" class="secondary" hidden>Cancel unsigned review</button></div>
+      <p id="message" role="status" aria-live="polite">Loading local state…</p>
+      <div id="recovery" class="recovery" hidden><h3>Verify or recover a transaction</h3><p>If Rabby returned a hash, it is saved here. If the browser closed or the request timed out, recover the hash from Rabby Activity. Do not send the step again.</p><label for="hash">Arbitrum transaction hash</label><input id="hash" type="text" placeholder="0x…" autocomplete="off" spellcheck="false"><button id="verify" class="secondary">Verify receipt</button><p class="small">A started request without a hash stays blocked. Only a verified receipt or an explicit Rabby rejection releases it.</p></div>
+    </section>
+    <aside>
+      <section class="card"><p class="eyebrow">REVIEWED SETUP</p><h2>One vault. Clear boundaries.</h2><dl id="roles"></dl><hr><dl><div><dt>Deposit cap</dt><dd>1,000,000 USDC</dd></div><div><dt>Minimum investment</dt><dd>1 USDC</dd></div><div><dt>Secondary stablecoin cap</dt><dd>20% USD₮0</dd></div><div><dt>Base conversion spread</dt><dd>0.05%</dd></div><div><dt>Management / performance fees</dt><dd>0% / 0%</dd></div></dl><details><summary>Full contract configuration</summary><pre id="configuration"></pre></details></section>
+      <section class="card note"><h3>What this deploy does</h3><p>The seed starts in the vault as USDC. No USD₮0 donation is included. Creating the vault does not start a keeper, authorize takers, ship orders or enable the frontend for live deposits.</p><p>Gas is paid separately in ETH on Arbitrum. Rabby shows the final network fee before you confirm.</p></section>
+    </aside></div>
+    <section class="card"><div class="section-heading"><h2>Deployment record</h2><a class="button secondary" href="/report.json" download>Download report</a></div><div id="record" class="muted">No verified transactions yet.</div><p><a id="manifest" class="button secondary" href="/manifest.json" download hidden>Download frontend manifest</a></p><p class="small">Local files: <code>.runtime/cash-plus-deployment/</code>. Keep this folder and the checkout to resume. Receipt verification on Arbitrum is not Ethereum finality.</p></section>
+  </main><footer>Cash+ by Pool Party · Local preparation only. Your private key never enters this tool.</footer><script src="/app.js" defer></script>
+</body></html>
