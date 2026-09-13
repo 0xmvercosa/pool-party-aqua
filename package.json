@@ -10,6 +10,9 @@
     "node": ">=22"
   },
   "scripts": {
+    "deploy:cash-plus": "tsx scripts/cash-plus-deploy.ts",
+    "deploy:cash-plus:check": "tsx scripts/cash-plus-deploy-check.ts",
+    "deploy:cash-plus:rehearse": "tsx scripts/cash-plus-deploy-rehearse.ts",
     "rehearse": "tsx scripts/rehearse.ts",
     "verify:onchain": "tsx scripts/verify-onchain.ts",
     "typecheck": "tsc --noEmit",
