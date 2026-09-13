@@ -34,3 +34,8 @@ arbitrum = "${ARBITRUM_RPC_URL}"
 
 [etherscan]
 arbitrum = { key = "${ARBISCAN_API_KEY}", chain = 42161, url = "https://api.etherscan.io/v2/api" }
+
+# Cash+ has independent compilation settings; Active Reserve's release settings stay unchanged.
+[profile.cashplus]
+optimizer_runs = 200
+via_ir = true
